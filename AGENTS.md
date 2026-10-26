@@ -20,6 +20,7 @@ node scripts/derive-fixture.mjs <recording.jsonl> <fixture.jsonl>  # rebuild a t
 | Question | File |
 |---|---|
 | What does it decide, and which constraints are binding? | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| How do I prove it works, and what does each check miss? | [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | How do I publish? | [docs/PUBLISHING.md](docs/PUBLISHING.md) |
 | Why was a rule chosen? | [.agents/notes/](.agents/notes/) |
 | What does a user see? | [README.md](README.md) |
@@ -44,8 +45,9 @@ the suite agree with whatever bug it has.
 ## To do
 
 - [ ] Publish to npm, and add the Trusted Publisher on npmjs.com (see [docs/PUBLISHING.md](docs/PUBLISHING.md)).
-- [ ] Verify against a live instance the next time a stall actually happens. The recording replay
-      proves the judgment; it cannot prove the message reaches a provider and continues a real turn.
+- [ ] Confirm the ordering guarantee against a live parent/child pair: the reasoning is derived from
+      the subagent settlement contract, not observed. See
+      [docs/VERIFICATION.md](docs/VERIFICATION.md#what-still-cannot-be-checked-here).
 
 ## Known traps
 
