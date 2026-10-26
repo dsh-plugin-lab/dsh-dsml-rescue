@@ -57,7 +57,13 @@ function runTurns(
     const events: MachineEvent[] = [
       { kind: 'assistant-message', turn: number, blocks: turn.blocks },
     ]
-    if (turn.completed) events.push({ kind: 'turn-stopping', turn: number, humanPending: false })
+    if (turn.completed)
+      events.push({
+        kind: 'turn-stopping',
+        turn: number,
+        humanPending: false,
+        outputExhausted: false,
+      })
     events.push({ kind: 'turn-end', turn: number, completed: turn.completed })
     if (interrupts.includes(number)) events.push({ kind: 'human-message' })
 
@@ -131,6 +137,25 @@ describe('what does not count as a stall', () => {
     expect(runTurns([answer], 3).decisions).toEqual(['ignore'])
   })
 
+  it('ignores a turn that was cut off at its output ceiling', () => {
+    // A truncated step owes an answer it never wrote; continuing it would buy
+    // another budget to be cut off from. The host's own max-tokens reading
+    // arrives one event later, so this is the only place it can be honoured.
+    let state = INITIAL_STATE
+    state = reduce(
+      state,
+      { kind: 'assistant-message', turn: 1, blocks: stallBlocks },
+      { maxConsecutive: 3 },
+    ).state
+    const step = reduce(
+      state,
+      { kind: 'turn-stopping', turn: 1, humanPending: false, outputExhausted: true },
+      { maxConsecutive: 3 },
+    )
+    expect(step.decision).toBe('ignore')
+    expect(step.state.consecutive).toBe(0)
+  })
+
   it('ignores a stopping offer whose closing message belongs to an earlier turn', () => {
     // A rejected pre-step leaves the previous turn's message in place; judging
     // it again would rescue a turn that produced nothing for another reason.
@@ -142,7 +167,7 @@ describe('what does not count as a stall', () => {
     ).state
     const step = reduce(
       state,
-      { kind: 'turn-stopping', turn: 2, humanPending: false },
+      { kind: 'turn-stopping', turn: 2, humanPending: false, outputExhausted: false },
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('ignore')
@@ -158,7 +183,7 @@ describe('what does not count as a stall', () => {
     state = { ...state, consecutive: 2 }
     const step = reduce(
       state,
-      { kind: 'turn-stopping', turn: 1, humanPending: true },
+      { kind: 'turn-stopping', turn: 1, humanPending: true, outputExhausted: false },
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('yield')
