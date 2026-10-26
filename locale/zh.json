@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "DSML Leak Rescue",
-    "description": "Continue a turn that ended with nothing because the model wrote its tool-call protocol markup into reasoning instead of calling a tool."
+    "title": "DSML 泄漏续跑",
+    "description": "当模型把工具调用协议标记写进思考、导致回合空转时，自动补发一条中性的续跑指令。"
   }
 }
