@@ -3,7 +3,7 @@
 ## Status
 
 - Version: the `version` field in [package.json](package.json)
-- Not published yet
+- Published on npm; releases go through the workflow — see [docs/PUBLISHING.md](docs/PUBLISHING.md)
 
 ## Commands
 
@@ -44,10 +44,11 @@ the suite agree with whatever bug it has.
 
 ## To do
 
-- [ ] Publish to npm, and add the Trusted Publisher on npmjs.com (see [docs/PUBLISHING.md](docs/PUBLISHING.md)).
 - [ ] Confirm the ordering guarantee against a live parent/child pair: the reasoning is derived from
       the subagent settlement contract, not observed. See
       [docs/VERIFICATION.md](docs/VERIFICATION.md#what-still-cannot-be-checked-here).
+- [ ] The draft Release holds only tooling and documentation PRs so far; leave it until a change
+      reaches the artifact — see [docs/PUBLISHING.md](docs/PUBLISHING.md#which-changes-deserve-a-release).
 
 ## Known traps
 
