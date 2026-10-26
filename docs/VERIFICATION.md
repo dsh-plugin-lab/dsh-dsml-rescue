@@ -9,11 +9,11 @@ establish. The design these checks protect is in [ARCHITECTURE.md](ARCHITECTURE.
 
 | Check | Establishes | Does not establish |
 |---|---|---|
-| `test/protocol.test.ts` | the markup matcher accepts every spelling of the dialect and rejects a sentence that quotes it | — |
+| `test/protocol.test.ts` | the markup matcher accepts every spelling of the dialect, ignores tokenizer artifacts in the token name, and rejects a sentence that quotes it | — |
 | `test/detect.test.ts` | a turn counts as a stall only when it produced nothing actionable | — |
 | `test/policy.test.ts` | the order of the cap, the human, and the streak reset | — |
-| `test/machine.test.ts` | those answers compose across whole turns, including what ends an automatic run | — |
-| `test/runtime.test.ts` | the plugin, mounted on a real Cordis context, translates events and queues the continuation | that the host then spends a model request on it |
+| `test/machine.test.ts` | those answers compose across whole turns, including what ends an automatic run and that a truncated step is excluded | that the token accounting it reads matches a real provider's |
+| `test/runtime.test.ts` | the plugin, mounted on a real Cordis context, translates events, excludes a spent output budget, and queues the continuation | that the host then spends a model request on it |
 | `test/recording.test.ts` | the shipped machine recognizes exactly the eight stalled turns in a real transcript, and none of the other thirty | that the same holds for a route that leaks differently |
 
 The recording fixtures are derived, not hand-written; see `scripts/derive-fixture.mjs` and the
