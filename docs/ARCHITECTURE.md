@@ -72,6 +72,13 @@ The reverse follows: **giving up writes nothing.** A message in a capped-out chi
 leave it permanently unsettled. Giving up is a log line, and the visible trace is the last
 continuation's own summary.
 
+The seam also carries a contract this plugin relies on rather than re-checks: **the loop offers
+turn-stopping only for a turn it is closing normally.** A cancelled or failed turn throws instead,
+so no offer arrives. Re-deriving that locally would need state the seam does not have — the turn's
+own verdict — and any such flag would describe the *previous* turn, because the offer is dispatched
+before `turn/end` is appended. An abnormal close therefore stays observable only through the streak
+reset, and never through a rescue decision.
+
 ## The message
 
 One fixed sentence, and it never mentions the cause. The cause sits below the model, so stating it
@@ -126,8 +133,14 @@ and `messages` touch the host.
 ## Verification
 
 - Unit suites per layer, in `test/`.
+- **Host-facing suite** — [test/runtime.test.ts](../test/runtime.test.ts) mounts the plugin on a real
+  Cordis context and drives whole turns through it. It is the only suite that reaches the module
+  that translates events and performs the side effect; everything else it touches is the real
+  implementation, with only the two services and the one method stubbed.
 - **Recording replay** — [test/recording.test.ts](../test/recording.test.ts) runs two real
   transcripts through the shipped machine. The expectations were read off the recordings, not off
   the code: eight specific turns must be recognized and thirty must not be.
 - Fixtures are derived, not hand-written: [scripts/derive-fixture.mjs](../scripts/derive-fixture.mjs)
   is the provenance, and the raw recordings stay out of the repository.
+- What none of these establish: that the message reaches a provider and continues a real turn. That
+  needs a live stall, and is tracked in [AGENTS.md](../AGENTS.md).
