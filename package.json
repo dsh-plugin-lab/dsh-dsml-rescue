@@ -1,7 +1,7 @@
 {
   "name": "dsh-dsml-rescue",
   "version": "0.1.0",
-  "description": "Continue a turn that ended with nothing because the model wrote its tool-call protocol markup into reasoning instead of calling a tool.",
+  "description": "Continue the turn a model stalled by writing tool-call markup into its reasoning",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -38,7 +38,8 @@
     "locale/*.json",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "README_zh.md"
   ],
   "engines": {
     "node": ">=20",

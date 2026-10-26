@@ -5,7 +5,8 @@
 <h1 align="center">dsh-dsml-rescue</h1>
 
 <div align="center">
-  <p><em>When a model writes its tool-call protocol markup into reasoning, the turn ends with nothing. This continues it.</em></p>
+  <p><strong>Continue the turn a model stalled by writing tool-call markup into its reasoning</strong></p>
+  <p><em>把"思考里写了工具调用标记、于是什么都没发生"的那一回合续上</em></p>
 
   <p>
     <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
@@ -13,57 +14,65 @@
 
   <p>
     <a href="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/actions/workflows/ci.yml"><img src="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat&logo=none" alt="MIT license"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat" alt="MIT License"></a>
   </p>
 
   <p>
-    Changes per version → <a href="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/releases">Releases</a> (one per npm version)
+    Per-version changes → <a href="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/releases">Releases</a>
+  </p>
+
+  <p>
+    <strong><a href="README.md">English</a></strong> · <a href="README_zh.md">简体中文</a>
   </p>
 </div>
 
 ---
 
-## What it offers
+Some provider routes deliver a model's tool call as **reasoning text carrying the call's own markup**
+instead of a structured call. The call never happens, the turn closes having produced nothing, and
+the conversation waits for someone to type "continue". This plugin types it for you.
 
-Some provider routes deliver a model's tool-call dialect as ordinary reasoning text instead of a structured tool call. The call never happens, the turn closes having produced nothing, and the conversation simply stops until someone types "continue".
+## What it does
 
-This plugin notices that specific ending and continues the turn for you.
-
-- Continues a turn that closed with leaked protocol markup and nothing else.
+- Continues a turn that closed with leaked protocol markup and **nothing else**.
 - Sends one neutral sentence: take the next step, or close out with a summary.
-- Reads your own prompts first — if you are already typing, it stays out of the way.
+- Waits for you — if you are already typing, it stays out of the way.
 - Stops after a few attempts instead of spending requests forever.
 - Covers child agents too, so a delegated run is not reported finished while it is stuck.
 
-It shortens the pause; it does not fix the route that leaks the markup. See [What it does not do](#what-it-does-not-do).
+## Getting started
 
-## Install
+**Prerequisites**: DSH on its current RC line; Node `>= 20`. The only source for the compatible range
+is `engines.dsh` in [package.json](package.json).
 
-```shell
-dsh plugin --profile <profile> add dsh-dsml-rescue
+```bash
+dsh plugin --profile web add dsh-dsml-rescue
 ```
 
-Nothing to configure: the defaults are the intended behaviour. Every knob and its default live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#configuration).
+Restart `dsh --profile web`. Nothing to configure: the defaults are the intended behaviour.
 
-## What it does not do
+From source: `git clone`, then `pnpm install && pnpm run build`, then
+`dsh plugin --profile web add "$PWD"`.
 
-- **It does not fix the cause.** The leak happens below the model, so no prompt can prevent it; this plugin only shortens the pause that follows.
-- **It does not rescue turns that ended empty for other reasons.** No markup, no rescue.
-- **It does not touch your conversation.** Nothing is rewritten, trimmed, or re-sent; it adds one message and lets the host run.
+## What it will not do
 
-## Compatibility
+- **It does not fix the cause.** The leak happens below the model, so no prompt prevents it; this
+  plugin only shortens the pause that follows.
+- **It does not rescue turns that ended empty for other reasons.** No markup, no rescue — a
+  cancellation, a failure, or a step cut off at its output ceiling all stay untouched.
+- **It does not touch your conversation.** Nothing is rewritten or re-sent; it adds one message and
+  lets the host run.
 
-The supported host line is `engines.dsh` in [package.json](package.json), which is the single source for it.
+## Configuration
 
-## Development
+Three keys, all optional: `enabled`, `maxConsecutive`, `applyToSubagents`. Defaults, and what moving
+each one changes → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#configuration).
 
-```shell
-pnpm install --config.node-linker=hoisted
-pnpm run check    # typecheck + build + test + release-state checks
-```
+## Under the hood
 
-How the pieces fit, and why the judgment lives where it does → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-Maintainer index → [AGENTS.md](AGENTS.md).
+How a stall is recognized, why the continuation is queued where it is, and what must not change →
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+What each check establishes, and a repeatable end-to-end run → [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## License
 
