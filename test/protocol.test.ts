@@ -40,6 +40,14 @@ describe('hasLeakedProtocolTail', () => {
     expect(hasLeakedProtocolTail(buried)).toBe(false)
   })
 
+  it('matches on the marker, so tokenizer artifacts inside the token name are irrelevant', () => {
+    // Byte-level tokenizers spell a space or underscore as U+2581, which NFKC
+    // leaves alone. Anchoring on the marker rather than the token name means
+    // such a spelling needs no handling here: `tool▁calls` still matches,
+    // because the part being matched ends before the token name starts.
+    expect(hasLeakedProtocolTail('ok\n</｜｜DSML｜｜tool\u2581calls>')).toBe(true)
+  })
+
   it('reports no leak for empty reasoning', () => {
     expect(hasLeakedProtocolTail('')).toBe(false)
     expect(hasLeakedProtocolTail('\n\n  \n')).toBe(false)
