@@ -37,6 +37,11 @@ Matching is limited to the **last few non-blank lines** and requires the line to
 limits exist for the same reason: a model *discussing* this failure quotes the markup mid-sentence,
 and that must not count as suffering from it.
 
+The matcher anchors on the **marker**, never on the token name after it. That is what makes
+tokenizer spellings a non-issue: a byte-level tokenizer writes a space or underscore as `▁`
+(U+2581), and NFKC does not fold it, so `</｜｜DSML｜｜tool▁calls>` would defeat a matcher that
+expected a specific token — it does not defeat one that stops at the marker.
+
 ## The decision
 
 Detection answers "is this a stall". A separate step answers "what now", because the two change for
@@ -47,12 +52,23 @@ different reasons: recognition follows new evidence, limits follow the operator'
 | candidate, budget left, nobody waiting | continue the turn | +1 |
 | candidate, a human prompt already queued | stay out of the way | unchanged |
 | candidate, budget spent | stop | cleared |
+| step spent its whole output budget | nothing | cleared |
 | not a candidate | nothing | cleared |
-| turn ended aborted, errored, or at its token ceiling | nothing | cleared |
+| turn ended aborted or errored | nothing | cleared |
 
-Two orderings are load-bearing. The cap outranks a waiting human, so a spent budget is always
-recorded rather than deferred forever. And an abnormal turn clears the streak: continuing a turn
-that failed for its own reason would hide the cause.
+Three orderings are load-bearing. The cap outranks a waiting human, so a spent budget is always
+recorded rather than deferred forever. An abnormal turn clears the streak: continuing a turn that
+failed for its own reason would hide the cause. And **a step that was cut off at its output ceiling
+is not a stall**: it owes an answer it never got to write, so continuing it would buy another budget
+to be cut off from.
+
+That last exclusion cannot come from the seam, which carries no stop reason, and the host's own
+`max-tokens` reading arrives one event later — after the decision is made. It is therefore derived
+from accounting both sides already publish: the closing message's output-token count against the
+ceiling the session last requested. Equality means the model was cut off rather than finished. The
+comparison fails open: an unknown ceiling or a missing count reports "not exhausted", because a
+wrong `true` would silence the rescue this plugin exists for, while a wrong `false` only costs the
+streak one attempt.
 
 ## Where the continuation is queued
 
@@ -77,7 +93,8 @@ turn-stopping only for a turn it is closing normally.** A cancelled or failed tu
 so no offer arrives. Re-deriving that locally would need state the seam does not have — the turn's
 own verdict — and any such flag would describe the *previous* turn, because the offer is dispatched
 before `turn/end` is appended. An abnormal close therefore stays observable only through the streak
-reset, and never through a rescue decision.
+reset, and never through a rescue decision. The output-ceiling case is the exception that *is*
+handled at the seam, because it leaves the turn normal and only accounting can tell it apart.
 
 ## The message
 
