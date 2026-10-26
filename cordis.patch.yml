@@ -1,0 +1,15 @@
+# Bundle patch: inserts this plugin as one row in a dsh profile.
+#
+# The format follows the official DSH bundle patch: the top level is an array of loader patch entries,
+# and `insert` appends plugin rows at the profile root.
+#
+# About `name`: it must be a module id the loader can resolve from the profile's node_modules, which is
+# this package's own name.
+#
+# About `config`: **never put credentials here.** This is no longer a source of values, so writing one
+# here has exactly two consequences — the startup migration moves it into the credential store, and the
+# row cannot be deleted from the composed config, so every startup warns you to remove it by hand.
+# Secrets belong in the plugin's configuration card, or in an environment variable.
+- insert:
+    - id: 'dsh-dsml-rescue'
+      name: 'dsh-dsml-rescue'

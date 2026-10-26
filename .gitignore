@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output (produced by the build command; shipped through the `files` field)
+# WARNING: this must stay anchored to the repository root. A bare `lib/` matches at **any depth**, so
+# it also ignores `src/lib/` — and in the structure this template lays down, `src/lib/` holds **source**
+# code. The symptom is silent: green locally, missing files in CI's clone. It was hit for real once
+# (see .agents/notes/2026-10-13-gitignore-lib-must-be-anchored.md).
+/lib/
+*.tsbuildinfo
+
+# Tests and coverage
+coverage/
+.vitest/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local backups and scratch files
+*.bak-*
+*.orig
+*.rej
+
+# Local credentials: never commit these
+.env
+.env.*
+*.local.yml
+
+# Raw session recordings used to derive the test fixtures. They are tens of
+# megabytes and are not evidence anyone needs in the history; the trimmed
+# fixtures under test/fixtures/ are what the tests read.
+/_analysis/
