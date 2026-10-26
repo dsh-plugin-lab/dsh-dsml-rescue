@@ -5,15 +5,16 @@
 <h1 align="center">dsh-dsml-rescue</h1>
 
 <div align="center">
-  <p><strong>把"思考里写了工具调用标记、于是什么都没发生"的那一回合续上</strong></p>
-  <p><em>Continue the turn a model stalled by writing tool-call markup into its reasoning</em></p>
+  <p><strong>空转的轮次，替你续上</strong></p>
+  <p><em>A stalled turn gets another one</em></p>
 
   <p>
-    <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
+    <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
   </p>
 
   <p>
     <a href="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/actions/workflows/ci.yml"><img src="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="https://www.npmjs.com/package/dsh-dsml-rescue"><img src="https://img.shields.io/npm/v/dsh-dsml-rescue.svg?style=flat" alt="npm"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat" alt="MIT License"></a>
   </p>
 
@@ -28,44 +29,49 @@
 
 ---
 
-有些 provider 路由会把模型的工具调用当成**普通思考文本**吐回来，里面夹着调用本身的协议标记。于是调用没有发生，回合以"什么都没产出"结束，会话就停在那儿等人敲一句"继续"。这个插件替你敲。
+## 这场景眼熟吗
+
+你提了要求，模型推理了一会儿，然后这一轮就这么结束了——没有回复、没有工具调用，什么都没有。推理过程的最后几行是这样：
+
+```
+</｜｜DSML｜｜ parameter>
+</｜｜DSML｜｜ invoke>
+</｜｜DSML｜｜ calls>
+```
+
+DSML（DeepSeek Markup Language）是 DeepSeek 表示工具调用的协议标记。某些 provider 路由会把这段标记当成**普通推理文本**返回，而不是真的发出调用；于是调用没有发生，这一轮空着结束，所有人都在等一句「继续」。
+
+这个插件替你把这句「继续」发出去。
 
 ## 它做什么
 
-- 只续一种回合：以泄漏的协议标记结束、且**没有产出任何别的**内容的回合。
-- 只发一句中性的话：要么执行下一步，要么收尾给结论。
-- 让着你：你已经在打字时它不插话。
-- 续几次就停，不会无限花请求。
-- 子 agent 也管，被派出去的活儿不会"卡着却被告知已结束"。
+- 只救空转的轮次：推理过程末尾带着 DSML 标记，而且没有产出任何别的内容。
+- 发一句很短、很中性的话：接着做，或者已经做完就收尾。
+- 你正在打字时它让开。
+- 连着几次没救回来就收手，不会一直烧请求。
+- 子代理也管：被派出去的任务不会在卡住时被误报为已完成。
 
-## 开始用
-
-**前置**：DSH 当前 RC 线；Node `>= 20`。兼容区间的唯一来源是 [package.json](package.json) 里的 `engines.dsh`。
+## 安装
 
 ```bash
 dsh plugin --profile web add dsh-dsml-rescue
 ```
 
-重启 `dsh --profile web` 即可。不需要配置，默认值就是预期行为。
+然后重启 `dsh --profile web`。不需要配置，默认值就是预期行为。
 
-从源码装：`git clone` 后 `pnpm install && pnpm run build`，再 `dsh plugin --profile web add "$PWD"`。
+从源码装：先 clone，`pnpm install && pnpm run build`，再 `dsh plugin --profile web add "$PWD"`。
 
-## 它不做什么
+## 它不会做什么
 
-- **不修根因。** 泄漏发生在模型之下，任何提示词都规避不了；本插件只把随之而来的停顿缩短。
-- **不救其他空转。** 没有标记就不救——用户主动取消、请求失败、以及输出被长度截断后停在原地的回合，都不碰。
-- **不动你的对话。** 不改写、不重发；只多加一条消息，然后交给宿主继续跑。
+- **不修根因。** 标记泄漏发生在模型之下，提示词够不着。它换来的只有那段等待被缩短。
+- **不救别的空转轮次。** 没有 DSML 标记就不出手：你主动取消、请求失败、回复被输出上限截断，这些都刻意不碰。
+- **不动你的对话。** 不改写、不重放历史，只多加一条消息，剩下的交给宿主。
 
-## 配置
+## 想了解更多
 
-三个键，都可选：`enabled`、`maxConsecutive`、`applyToSubagents`。默认值以及改动各自的影响 →
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#configuration)。
-
-## 内部实现
-
-怎么认定一次空转、续跑消息为什么排在那个位置、哪些约束不能破 →
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
-每项检查能证明什么、以及可复现的端到端验法 → [docs/VERIFICATION.md](docs/VERIFICATION.md)。
+- 有哪三个配置项、各自会改变什么 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#configuration)
+- 怎么认定一个空转轮次、哪些规则不能破 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- 测试能证明什么、怎么在本机完整复现 → [docs/VERIFICATION.md](docs/VERIFICATION.md)
 
 ## 许可
 

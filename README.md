@@ -5,15 +5,16 @@
 <h1 align="center">dsh-dsml-rescue</h1>
 
 <div align="center">
-  <p><strong>Continue the turn a model stalled by writing tool-call markup into its reasoning</strong></p>
-  <p><em>把"思考里写了工具调用标记、于是什么都没发生"的那一回合续上</em></p>
+  <p><strong>A stalled turn gets another one</strong></p>
+  <p><em>空转的轮次，替你续上</em></p>
 
   <p>
-    <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
+    <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
   </p>
 
   <p>
     <a href="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/actions/workflows/ci.yml"><img src="https://github.com/dsh-plugin-lab/dsh-dsml-rescue/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="https://www.npmjs.com/package/dsh-dsml-rescue"><img src="https://img.shields.io/npm/v/dsh-dsml-rescue.svg?style=flat" alt="npm"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat" alt="MIT License"></a>
   </p>
 
@@ -28,51 +29,60 @@
 
 ---
 
-Some provider routes deliver a model's tool call as **reasoning text carrying the call's own markup**
-instead of a structured call. The call never happens, the turn closes having produced nothing, and
-the conversation waits for someone to type "continue". This plugin types it for you.
+## Does this look familiar?
+
+You asked for something. The model reasoned for a while. Then the turn simply ended — no answer, no
+tool call, nothing. The reasoning output ended with lines like these:
+
+```
+</｜｜DSML｜｜ parameter>
+</｜｜DSML｜｜ invoke>
+</｜｜DSML｜｜ calls>
+```
+
+DSML (DeepSeek Markup Language) is how DeepSeek formats a tool call. Some provider routes hand that
+markup back as **ordinary reasoning text** instead of an actual call, so the call never happens, the
+turn closes with no output, and everything waits for someone to type "continue".
+
+This plugin types it.
 
 ## What it does
 
-- Continues a turn that closed with leaked protocol markup and **nothing else**.
-- Sends one neutral sentence: take the next step, or close out with a summary.
-- Waits for you — if you are already typing, it stays out of the way.
-- Stops after a few attempts instead of spending requests forever.
-- Covers child agents too, so a delegated run is not reported finished while it is stuck.
+- Continues a stalled turn: DSML markup at the end of the reasoning, and nothing else produced.
+- Sends one short, neutral line — carry on, or wrap up if the work is done.
+- Backs off while you are typing.
+- Gives up after a few attempts instead of burning requests.
+- Covers subagents too, so a delegated task is not falsely reported as completed while it is stuck.
 
-## Getting started
-
-**Prerequisites**: DSH on its current RC line; Node `>= 20`. The only source for the compatible range
-is `engines.dsh` in [package.json](package.json).
+## Install
 
 ```bash
 dsh plugin --profile web add dsh-dsml-rescue
 ```
 
-Restart `dsh --profile web`. Nothing to configure: the defaults are the intended behaviour.
+Then restart `dsh --profile web`. There is nothing to configure — the defaults are the intended
+behaviour.
 
-From source: `git clone`, then `pnpm install && pnpm run build`, then
+Working from source: clone, `pnpm install && pnpm run build`, then
 `dsh plugin --profile web add "$PWD"`.
 
 ## What it will not do
 
-- **It does not fix the cause.** The leak happens below the model, so no prompt prevents it; this
-  plugin only shortens the pause that follows.
-- **It does not rescue turns that ended empty for other reasons.** No markup, no rescue — a
-  cancellation, a failure, or a step cut off at its output ceiling all stay untouched.
-- **It does not touch your conversation.** Nothing is rewritten or re-sent; it adds one message and
-  lets the host run.
+- **It does not fix the cause.** The markup leaks below the model, out of reach of any prompt. What
+  it buys you is the wait, shortened.
+- **It does not rescue other empty turns.** No DSML markup, no rescue: a cancellation, a failed
+  request, or a reply cut off at the output limit is left alone on purpose.
+- **It does not touch your conversation.** Nothing is rewritten or replayed; it adds one message and
+  lets the host carry on.
 
-## Configuration
+## Going deeper
 
-Three keys, all optional: `enabled`, `maxConsecutive`, `applyToSubagents`. Defaults, and what moving
-each one changes → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#configuration).
-
-## Under the hood
-
-How a stall is recognized, why the continuation is queued where it is, and what must not change →
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-What each check establishes, and a repeatable end-to-end run → [docs/VERIFICATION.md](docs/VERIFICATION.md).
+- Which three settings exist and what each one changes →
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#configuration)
+- How a stalled turn is recognised, and the rules that must not be broken →
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- What the tests prove, and how to reproduce the whole thing locally →
+  [docs/VERIFICATION.md](docs/VERIFICATION.md)
 
 ## License
 
