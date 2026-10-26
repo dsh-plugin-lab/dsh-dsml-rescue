@@ -1,33 +1,56 @@
 /**
  * Host half entry point.
  *
- * This is the **only** file that touches Cordis: lifecycle, config validation and registration all
- * land here. Business logic lives outside this file so it can be unit-tested as plain objects.
+ * Assembly only: the Cordis name, the service this plugin reads, the validated
+ * config, and the one call that installs the runtime. Every judgment lives in
+ * `detect` and `policy`, and the only side effect lives in `runtime`, so this
+ * file has nothing to unit-test beyond its shape.
  *
- * Lifecycle discipline: state, listeners and timers are created inside `ctx.effect()` / `ctx.on()`
- * and released by the disposer those return. **Module scope holds no mutable state** — otherwise a
- * hot reload leaves two generations of the plugin sharing one copy of it, and the resulting fault is
- * a ghost.
+ * @module dsh-dsml-rescue
  */
+
+import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import { install } from './runtime.ts'
 
 /** Cordis plugin name, used by the loader for diagnostics. */
 export const name = 'dsh-dsml-rescue'
 
-/**
- * The services this plugin needs. List only what it actually uses — declaring a service you never
- * touch complicates startup ordering for nothing.
- *
- * TODO: for example the tool registry is `['tools']`.
- */
-export const inject: string[] = []
+/** The agent registry, needed to map a session back to its live agent. */
+export const inject = ['agents']
+
+/** Validated configuration; the defaults are the documented behaviour. */
+export interface Config {
+  /** Whether the plugin acts at all. Turn it off without uninstalling. */
+  enabled?: boolean
+  /**
+   * Consecutive rescues allowed for one agent before it is left alone. Each
+   * rescue costs one model request, so this is the only spend control here.
+   */
+  maxConsecutive?: number
+  /**
+   * Whether child agents are rescued too. Their stalls otherwise settle
+   * silently and reach their parent only as "finished".
+   */
+  applyToSubagents?: boolean
+}
+
+export const Config: z<Config> = z.object({
+  enabled: z.boolean().default(true),
+  // A cap of zero would mean "never rescue", which `enabled` already says.
+  maxConsecutive: z.natural().min(1).default(3),
+  applyToSubagents: z.boolean().default(true),
+})
 
 /**
- * Mount point.
- *
- * TODO: register whatever this plugin provides here.
- *
- * @param ctx Host context.
+ * Mount the plugin.
+ * @param ctx - host context.
+ * @param config - validated configuration.
  */
-export function apply(_ctx: unknown): void {
-  // Nothing yet. This is a skeleton, not a finished plugin.
+export function apply(ctx: Context, config: Config): void {
+  if (config.enabled === false) return
+  install(ctx, {
+    maxConsecutive: config.maxConsecutive ?? 3,
+    applyToSubagents: config.applyToSubagents ?? true,
+  })
 }
