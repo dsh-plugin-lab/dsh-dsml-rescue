@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "DSML Rescue",
-    "description": "Continues the turn a model stalled by writing tool-call markup into its reasoning instead of calling a tool."
+    "description": "Auto-continues turns stalled by DSML tool-call markup leaking into reasoning."
   }
 }
