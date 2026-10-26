@@ -15,6 +15,7 @@ establish. The design these checks protect is in [ARCHITECTURE.md](ARCHITECTURE.
 | `test/machine.test.ts` | those answers compose across whole turns, including what ends an automatic run and that a truncated step is excluded | that the token accounting it reads matches a real provider's |
 | `test/runtime.test.ts` | the plugin, mounted on a real Cordis context, translates events, excludes a spent output budget, and queues the continuation | that the host then spends a model request on it |
 | `test/recording.test.ts` | the shipped machine recognizes exactly the eight stalled turns in a real transcript, and none of the other thirty | that the same holds for a route that leaks differently |
+| `test/redlines.test.ts` | the rules stated in prose still hold: dependency layering and the one-way module chain, the declared host surface, the four compiler switches, the lockfile, the entry file's emptiness of judgment, the single side effect's location, the neutrality of the message, and the documentation's links | that any of them is the right rule — a redline guards a decision, it does not justify it |
 
 The recording fixtures are derived, not hand-written; see `scripts/derive-fixture.mjs` and the
 evidence note under [.agents/notes/](../.agents/notes/).
