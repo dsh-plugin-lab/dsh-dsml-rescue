@@ -1,7 +1,10 @@
-<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="placeholder icon">
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dsh-dsml-rescue">
   <!--
-    PLACEHOLDER ICON. Replace it before publishing with artwork you made or are licensed to use.
-    Keep to the icon criteria in the organization's plugin-conventions document.
+    Two chevrons advancing to the right: the turn continues. The second one is
+    lighter so the pair reads as motion rather than as a single direction sign.
+    Transparent canvas, no background plate, colours fixed because the host
+    paints this as an image.
   -->
-  <circle cx="18" cy="18" r="9" fill="#4D6BFE"/>
+  <path d="M11 10.5 L18 18 L11 25.5" stroke="#4D6BFE" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18.5 10.5 L25.5 18 L18.5 25.5" stroke="#93A5FF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
