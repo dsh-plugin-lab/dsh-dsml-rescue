@@ -19,6 +19,12 @@ export const name = 'dsh-dsml-rescue'
 /** The agent registry, needed to map a session back to its live agent. */
 export const inject = ['agents']
 
+/** Rescues allowed in a row before an agent is left alone. */
+export const DEFAULT_MAX_CONSECUTIVE = 3
+
+/** Whether child agents are rescued by default. */
+export const DEFAULT_APPLY_TO_SUBAGENTS = true
+
 /** Validated configuration; the defaults are the documented behaviour. */
 export interface Config {
   /** Whether the plugin acts at all. Turn it off without uninstalling. */
@@ -38,19 +44,19 @@ export interface Config {
 export const Config: z<Config> = z.object({
   enabled: z.boolean().default(true),
   // A cap of zero would mean "never rescue", which `enabled` already says.
-  maxConsecutive: z.natural().min(1).default(3),
-  applyToSubagents: z.boolean().default(true),
+  maxConsecutive: z.natural().min(1).default(DEFAULT_MAX_CONSECUTIVE),
+  applyToSubagents: z.boolean().default(DEFAULT_APPLY_TO_SUBAGENTS),
 })
 
 /**
  * Mount the plugin.
  * @param ctx - host context.
- * @param config - validated configuration.
+ * @param config - validated configuration; the schema fills in every default.
  */
 export function apply(ctx: Context, config: Config): void {
   if (config.enabled === false) return
   install(ctx, {
-    maxConsecutive: config.maxConsecutive ?? 3,
-    applyToSubagents: config.applyToSubagents ?? true,
+    maxConsecutive: config.maxConsecutive ?? DEFAULT_MAX_CONSECUTIVE,
+    applyToSubagents: config.applyToSubagents ?? DEFAULT_APPLY_TO_SUBAGENTS,
   })
 }

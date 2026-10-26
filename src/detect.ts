@@ -1,7 +1,7 @@
 /**
  * The one judgment this plugin makes: does a finished turn deserve a rescue?
  *
- * A turn deserves one when it ended normally yet produced nothing the loop or
+ * It deserves one when the turn ended normally yet produced nothing the loop or
  * the user can act on, and its reasoning ends in leaked protocol markup. Both
  * halves are required — a turn that produced nothing for another reason stays
  * untouched, because rescuing it would paper over an unrelated failure.
@@ -30,24 +30,20 @@ export interface TurnObservation {
   readonly blocks: readonly BlockLike[]
 }
 
-/** Whether a text block carries anything other than whitespace. */
-function carriesText(block: BlockLike): boolean {
-  return block.type === 'text' && block.text !== undefined && /\S/.test(block.text)
-}
-
 /**
- * Whether the turn produced anything a caller could act on.
+ * Whether one block produced something a caller could act on.
  *
- * An unknown block type counts as actionable on purpose: a provider that adds
- * a content kind this plugin has never seen is far more likely to have produced
+ * Reasoning never counts — that is where the leak lives, not where the work
+ * lands. An unknown block type does count, on purpose: a provider that adds a
+ * content kind this plugin has never seen is far likelier to have produced
  * output than to have produced nothing, and a false rescue costs a request.
- * @param blocks - the turn's closing content blocks.
- * @returns whether any block is visible text, a tool call, or an unknown kind.
+ * @param block - one content block of the closing message.
+ * @returns whether the block is visible text, a tool call, or an unknown kind.
  */
-function hasActionableContent(blocks: readonly BlockLike[]): boolean {
-  return blocks.some((block) =>
-    block.type === 'reasoning' ? false : block.type === 'text' ? carriesText(block) : true,
-  )
+function isActionable(block: BlockLike): boolean {
+  if (block.type === 'reasoning') return false
+  if (block.type !== 'text') return true
+  return block.text !== undefined && /\S/.test(block.text)
 }
 
 /**
@@ -57,9 +53,8 @@ function hasActionableContent(blocks: readonly BlockLike[]): boolean {
  */
 function joinReasoning(blocks: readonly BlockLike[]): string {
   return blocks
-    .flatMap((block) =>
-      block.type === 'reasoning' && block.text !== undefined ? [block.text] : [],
-    )
+    .filter((block) => block.type === 'reasoning' && block.text !== undefined)
+    .map((block) => block.text ?? '')
     .join('\n')
 }
 
@@ -71,6 +66,6 @@ function joinReasoning(blocks: readonly BlockLike[]): string {
  */
 export function isRescueCandidate(observation: TurnObservation): boolean {
   if (!observation.completed) return false
-  if (hasActionableContent(observation.blocks)) return false
+  if (observation.blocks.some(isActionable)) return false
   return hasLeakedProtocolTail(joinReasoning(observation.blocks))
 }

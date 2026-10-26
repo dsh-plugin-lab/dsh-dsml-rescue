@@ -22,6 +22,8 @@ export interface MachineState {
   readonly turn: number | undefined
   /** Content blocks of the last assistant message seen. */
   readonly blocks: readonly BlockLike[]
+  /** Output tokens the last assistant message reported, when the host logged it. */
+  readonly outputTokens: number | undefined
 }
 
 /** One durable or in-memory fact, already adapted from its host event. */
@@ -31,6 +33,7 @@ export type MachineEvent =
       readonly kind: 'assistant-message'
       readonly turn: number
       readonly blocks: readonly BlockLike[]
+      readonly outputTokens: number | undefined
     }
   /** A human-authored prompt was appended. */
   | { readonly kind: 'human-message' }
@@ -42,14 +45,15 @@ export type MachineEvent =
       readonly turn: number
       readonly humanPending: boolean
       /**
-       * Whether the closing step used up its whole output budget, which the
-       * caller reads from its output-token count against the request's ceiling.
+       * The output ceiling the closing request was sent under, when the session
+       * recorded one.
        *
-       * The seam carries no stop reason, so this is the only way to keep a
-       * truncated turn out of the rescue path; the host's own reading of
-       * `max-tokens` arrives one event later, after the decision is made.
+       * The seam carries no stop reason, so comparing the tokens spent against
+       * this ceiling is the only way to keep a truncated turn out of the rescue
+       * path; the host's own `max-tokens` verdict arrives one event later, after
+       * the decision has already been made.
        */
-      readonly outputExhausted: boolean
+      readonly outputCeiling: number | undefined
     }
 
 /** Limits the reducer reads from configuration. */
@@ -69,7 +73,34 @@ export interface MachineStep {
 }
 
 /** The state a machine starts in. */
-export const INITIAL_STATE: MachineState = { consecutive: 0, turn: undefined, blocks: [] }
+export const INITIAL_STATE: MachineState = {
+  consecutive: 0,
+  turn: undefined,
+  blocks: [],
+  outputTokens: undefined,
+}
+
+/** Nothing to do, with the state unchanged. */
+function nothing(state: MachineState): MachineStep {
+  return { state, decision: 'ignore', round: 0 }
+}
+
+/**
+ * Whether the step being closed spent its whole output budget.
+ *
+ * Reads as exhausted only when both numbers are known: an unknown ceiling or a
+ * missing count reports "not exhausted" on purpose, because a wrong `true`
+ * would silence the rescue this plugin exists for, while a wrong `false` only
+ * costs the streak one attempt.
+ * @param state - state carrying the closing message's output tokens.
+ * @param ceiling - the ceiling the request was sent under, when known.
+ * @returns whether the model was cut off rather than finished.
+ */
+function spentBudget(state: MachineState, ceiling: number | undefined): boolean {
+  if (state.outputTokens === undefined) return false
+  if (ceiling === undefined || ceiling <= 0) return false
+  return state.outputTokens >= ceiling
+}
 
 /**
  * Advance one agent's machine by one event.
@@ -89,28 +120,27 @@ export function reduce(
 ): MachineStep {
   switch (event.kind) {
     case 'assistant-message':
-      return {
-        state: { ...state, turn: event.turn, blocks: event.blocks },
-        decision: 'ignore',
-        round: 0,
-      }
+      return nothing({
+        ...state,
+        turn: event.turn,
+        blocks: event.blocks,
+        outputTokens: event.outputTokens,
+      })
 
     case 'human-message':
-      return { state: { ...state, consecutive: 0 }, decision: 'ignore', round: 0 }
+      return nothing({ ...state, consecutive: 0 })
 
     case 'turn-end':
-      return event.completed
-        ? { state, decision: 'ignore', round: 0 }
-        : { state: { ...state, consecutive: 0 }, decision: 'ignore', round: 0 }
+      // An abnormal close is a different failure; continuing it would hide the cause.
+      return event.completed ? nothing(state) : nothing({ ...state, consecutive: 0 })
 
     case 'turn-stopping': {
-      const blocks = state.turn === event.turn ? state.blocks : []
-      // A step that spent its whole output budget was cut off, not finished:
-      // the turn owes an answer it never got to write. Continuing it would
-      // treat truncation as a stall and buy another budget to be cut off from.
-      const candidate = !event.outputExhausted && isRescueCandidate({ completed: true, blocks })
+      // A truncated step owes an answer it never wrote: continuing it would treat
+      // truncation as a stall and buy another budget to be cut off from.
+      const blocks =
+        state.turn === event.turn && !spentBudget(state, event.outputCeiling) ? state.blocks : []
       const outcome = evaluate({
-        candidate,
+        candidate: isRescueCandidate({ completed: true, blocks }),
         consecutive: state.consecutive,
         maxConsecutive: limits.maxConsecutive,
         humanPending: event.humanPending,
