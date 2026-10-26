@@ -86,7 +86,7 @@ jobs:
     timeout-minutes: 20
     # The environment name configured on the npm side must match this word for word, or the OIDC
     # claims will not match the Trusted Publisher and publishing fails with a 404.
-    environment: release
+    environment: github-release
 
     steps:
       # A manual dispatch accepts only the default branch. A tag trigger necessarily points at a
