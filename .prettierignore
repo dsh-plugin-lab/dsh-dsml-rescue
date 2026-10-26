@@ -1,0 +1,7 @@
+node_modules/
+lib/
+assets/
+pnpm-lock.yaml
+*.md
+.pre-commit-config.yaml
+_analysis/

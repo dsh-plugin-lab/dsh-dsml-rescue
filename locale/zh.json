@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DSML Leak Rescue",
+    "description": "Continue a turn that ended with nothing because the model wrote its tool-call protocol markup into reasoning instead of calling a tool."
+  }
+}
