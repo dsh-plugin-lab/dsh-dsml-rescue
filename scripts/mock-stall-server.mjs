@@ -80,13 +80,20 @@ const server = createServer((request, response) => {
       'utf8',
     )
 
-    if (requests === 1) {
+    // Three kinds of request arrive here, and the classification is what makes
+    // this demo repeatable instead of one-shot per server lifetime.
+    const stall = !/^(Generate the session title|Continue with the task)/.test(lastText ?? '')
+    if (stall) {
       // Reasoning only: no `content`, no tool calls. This is the stall.
       reply(response, [
         delta({ role: 'assistant', reasoning_content: 'I should call a tool now.' }),
         delta({ reasoning_content: LEAK }),
         delta({}, 'stop'),
       ])
+      return
+    }
+    if ((lastText ?? '').startsWith('Generate the session title')) {
+      reply(response, [delta({ role: 'assistant', content: 'Demo session' }), delta({}, 'stop')])
       return
     }
     reply(response, [
