@@ -7,14 +7,15 @@ only place the rules are written down: the code comments explain one line, and t
 ## The failure it answers
 
 A model emits a tool call. On some provider routes that call arrives as **reasoning text** carrying
-the dialect's own markup instead of a structured tool call, so the harness sees a message with no
-tool call and no visible text. The step ends, the turn closes as `completed`, and the agent goes
-idle with nothing shown. The model believes it acted; nobody received the action.
+**DSML markup** — DeepSeek Markup Language, the dialect DeepSeek uses to express a tool call —
+instead of a structured tool call, so the harness sees a message with no tool call and no visible
+text. The step ends, the turn closes as `completed`, and the agent goes idle with nothing shown. The
+model believes it acted; nobody received the action.
 
 Three facts from the recording this plugin was built against
 ([evidence](../.agents/notes/the-stall-evidence.md)) shape every rule below:
 
-- the leaked markup is always at the **end** of the reasoning stream, and carries the token
+- the leaked DSML markup is always at the **end** of the reasoning stream, and carries the token
   `｜｜DSML｜｜` in full-width or ASCII bars,
 - the closing message carries **only** reasoning — no text block, no tool call,
 - the turn is recorded `completed`, so nothing downstream treats it as a failure.
@@ -26,7 +27,7 @@ A turn is a rescue candidate when all three hold:
 1. it closed normally,
 2. its closing message produced nothing actionable — a `tool-call` or a text block with
    non-whitespace content would have ended that,
-3. its reasoning ends with leaked protocol markup.
+3. its reasoning ends with leaked DSML markup.
 
 The third condition is deliberately narrow. A turn that ended empty for any other reason is left
 alone, because a rescue would spend a request to hide a different failure. The marker is read from
