@@ -55,14 +55,14 @@ function runTurns(
   for (const [index, turn] of turns.entries()) {
     const number = index + 1
     const events: MachineEvent[] = [
-      { kind: 'assistant-message', turn: number, blocks: turn.blocks },
+      { kind: 'assistant-message', turn: number, blocks: turn.blocks, outputTokens: undefined },
     ]
     if (turn.completed)
       events.push({
         kind: 'turn-stopping',
         turn: number,
         humanPending: false,
-        outputExhausted: false,
+        outputCeiling: undefined,
       })
     events.push({ kind: 'turn-end', turn: number, completed: turn.completed })
     if (interrupts.includes(number)) events.push({ kind: 'human-message' })
@@ -140,20 +140,35 @@ describe('what does not count as a stall', () => {
   it('ignores a turn that was cut off at its output ceiling', () => {
     // A truncated step owes an answer it never wrote; continuing it would buy
     // another budget to be cut off from. The host's own max-tokens reading
-    // arrives one event later, so this is the only place it can be honoured.
-    let state = INITIAL_STATE
-    state = reduce(
-      state,
-      { kind: 'assistant-message', turn: 1, blocks: stallBlocks },
-      { maxConsecutive: 3 },
-    ).state
+    // arrives one event later, so this comparison is the only place it can be
+    // honoured.
     const step = reduce(
-      state,
-      { kind: 'turn-stopping', turn: 1, humanPending: false, outputExhausted: true },
+      { ...INITIAL_STATE, turn: 1, blocks: stallBlocks, outputTokens: 4096 },
+      { kind: 'turn-stopping', turn: 1, humanPending: false, outputCeiling: 4096 },
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('ignore')
     expect(step.state.consecutive).toBe(0)
+  })
+
+  it('still rescues when the closing step stayed under its ceiling', () => {
+    const step = reduce(
+      { ...INITIAL_STATE, turn: 1, blocks: stallBlocks, outputTokens: 4095 },
+      { kind: 'turn-stopping', turn: 1, humanPending: false, outputCeiling: 4096 },
+      { maxConsecutive: 3 },
+    )
+    expect(step.decision).toBe('rescue')
+  })
+
+  it('fails open when the ceiling was never recorded', () => {
+    // An unknown ceiling must not silence the rescue: a wrong "exhausted" is far
+    // more expensive than a wrong "not exhausted".
+    const step = reduce(
+      { ...INITIAL_STATE, turn: 1, blocks: stallBlocks, outputTokens: 4096 },
+      { kind: 'turn-stopping', turn: 1, humanPending: false, outputCeiling: undefined },
+      { maxConsecutive: 3 },
+    )
+    expect(step.decision).toBe('rescue')
   })
 
   it('ignores a stopping offer whose closing message belongs to an earlier turn', () => {
@@ -162,12 +177,12 @@ describe('what does not count as a stall', () => {
     let state = INITIAL_STATE
     state = reduce(
       state,
-      { kind: 'assistant-message', turn: 1, blocks: stallBlocks },
+      { kind: 'assistant-message', turn: 1, blocks: stallBlocks, outputTokens: undefined },
       { maxConsecutive: 3 },
     ).state
     const step = reduce(
       state,
-      { kind: 'turn-stopping', turn: 2, humanPending: false, outputExhausted: false },
+      { kind: 'turn-stopping', turn: 2, humanPending: false, outputCeiling: undefined },
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('ignore')
@@ -177,13 +192,13 @@ describe('what does not count as a stall', () => {
     let state: MachineState = INITIAL_STATE
     state = reduce(
       state,
-      { kind: 'assistant-message', turn: 1, blocks: stallBlocks },
+      { kind: 'assistant-message', turn: 1, blocks: stallBlocks, outputTokens: undefined },
       { maxConsecutive: 3 },
     ).state
     state = { ...state, consecutive: 2 }
     const step = reduce(
       state,
-      { kind: 'turn-stopping', turn: 1, humanPending: true, outputExhausted: false },
+      { kind: 'turn-stopping', turn: 1, humanPending: true, outputCeiling: undefined },
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('yield')
