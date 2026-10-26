@@ -37,7 +37,20 @@ export type MachineEvent =
   /** A turn closed with the given outcome. */
   | { readonly kind: 'turn-end'; readonly turn: number; readonly completed: boolean }
   /** The loop is about to close the turn unless new work arrives. */
-  | { readonly kind: 'turn-stopping'; readonly turn: number; readonly humanPending: boolean }
+  | {
+      readonly kind: 'turn-stopping'
+      readonly turn: number
+      readonly humanPending: boolean
+      /**
+       * Whether the closing step used up its whole output budget, which the
+       * caller reads from its output-token count against the request's ceiling.
+       *
+       * The seam carries no stop reason, so this is the only way to keep a
+       * truncated turn out of the rescue path; the host's own reading of
+       * `max-tokens` arrives one event later, after the decision is made.
+       */
+      readonly outputExhausted: boolean
+    }
 
 /** Limits the reducer reads from configuration. */
 export interface MachineLimits {
@@ -92,7 +105,10 @@ export function reduce(
 
     case 'turn-stopping': {
       const blocks = state.turn === event.turn ? state.blocks : []
-      const candidate = isRescueCandidate({ completed: true, blocks })
+      // A step that spent its whole output budget was cut off, not finished:
+      // the turn owes an answer it never got to write. Continuing it would
+      // treat truncation as a stall and buy another budget to be cut off from.
+      const candidate = !event.outputExhausted && isRescueCandidate({ completed: true, blocks })
       const outcome = evaluate({
         candidate,
         consecutive: state.consecutive,

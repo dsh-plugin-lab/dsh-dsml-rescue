@@ -19,10 +19,11 @@
  *    by one microtask would let the child go idle first and race exactly that
  *    check.
  *
- * The seam cannot distinguish a completed turn from one that hit its output
- * ceiling: that verdict is not part of the payload. A truncated turn whose only
- * content was reasoning is therefore indistinguishable here and gets the same
- * rescue; the streak cap bounds what that can cost.
+ * The seam's payload carries no stop reason, so a turn cut off at its output
+ * ceiling looks like one that finished. It is excluded by accounting instead —
+ * the closing message's output-token count against the ceiling this session last
+ * requested — because the host's own `max-tokens` verdict arrives one event
+ * later, after the decision is already made.
  *
  * **Why giving up writes nothing.** See constraint 3: a message in a capped-out
  * child's inbox would leave it permanently unsettled, so its parent would never
@@ -33,7 +34,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, TokenUsage } from '@deepseek-ai/dsh-llm'
 import { INITIAL_STATE, reduce } from './machine.ts'
 import type { MachineState } from './machine.ts'
 import { createRescueMessage } from './messages.ts'
@@ -55,12 +56,39 @@ function humanPending(agent: Agent): boolean {
 }
 
 /**
+ * Whether the step being closed spent its whole output budget.
+ *
+ * The seam carries no stop reason, so this compares the closing message's
+ * output-token count with the ceiling the request was sent under. Both numbers
+ * are the caller's own accounting — the count is what the provider reported and
+ * the ceiling is what this session last requested — so equality means the model
+ * was cut off, not that it chose to stop.
+ *
+ * The comparison is deliberately one-sided: an unknown ceiling or a missing
+ * count reports "not exhausted", because a wrong `true` would silence the
+ * rescue this plugin exists for, while a wrong `false` only costs the rescue
+ * one attempt of the streak.
+ * @param agent - the agent whose turn is closing.
+ * @param turn - the turn being closed.
+ * @param usage - the closing message's token accounting, when the host logged it.
+ * @returns whether the output budget is spent.
+ */
+function outputExhausted(agent: Agent, usage: TokenUsage | undefined): boolean {
+  if (usage === undefined) return false
+  const ceiling = agent.session.requestHeader()?.config.maxTokens
+  if (ceiling === undefined || ceiling <= 0) return false
+  return usage.outputTokens >= ceiling
+}
+
+/**
  * Install the turn watcher and its continuation side effect.
  * @param ctx - plugin context; listeners are disposed with it.
  * @param config - validated limits.
  */
 export function install(ctx: Context, config: RuntimeConfig): void {
   const states = new Map<Agent, MachineState>()
+  /** Output accounting of the last assistant message, per agent. */
+  const usageByAgent = new Map<Agent, TokenUsage | undefined>()
 
   /** Apply one reducer event and store the result. */
   function advance(agent: Agent, event: Parameters<typeof reduce>[1]): ReturnType<typeof reduce> {
@@ -86,6 +114,7 @@ export function install(ctx: Context, config: RuntimeConfig): void {
           turn: event.data.turn,
           blocks: event.data.message.content as readonly ContentBlock[],
         })
+        usageByAgent.set(agent, event.data.usage)
         return
       case 'user/message':
         // Human input redefines the streak; this plugin's own notices do not.
@@ -105,7 +134,12 @@ export function install(ctx: Context, config: RuntimeConfig): void {
 
   ctx.on('agent/turn-stopping', ({ agent, turn }) => {
     if (!config.applyToSubagents && isSubagent(agent)) return
-    const step = advance(agent, { kind: 'turn-stopping', turn, humanPending: humanPending(agent) })
+    const step = advance(agent, {
+      kind: 'turn-stopping',
+      turn,
+      humanPending: humanPending(agent),
+      outputExhausted: outputExhausted(agent, usageByAgent.get(agent)),
+    })
 
     if (step.decision === 'give-up') {
       ctx.logger.warn(
@@ -127,5 +161,6 @@ export function install(ctx: Context, config: RuntimeConfig): void {
 
   ctx.on('agent/disposed', ({ agent }) => {
     states.delete(agent)
+    usageByAgent.delete(agent)
   })
 }

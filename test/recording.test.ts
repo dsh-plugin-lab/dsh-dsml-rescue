@@ -42,7 +42,7 @@ function replay(events: readonly MachineEvent[], maxConsecutive: number): Map<nu
       // sent in this recording opened a later turn rather than joining one.
       const step = reduce(
         state,
-        { kind: 'turn-stopping', turn: event.turn, humanPending: false },
+        { kind: 'turn-stopping', turn: event.turn, humanPending: false, outputExhausted: false },
         { maxConsecutive },
       )
       state = step.state
