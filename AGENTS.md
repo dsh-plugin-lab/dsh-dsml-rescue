@@ -8,39 +8,54 @@
 ## Commands
 
 ```shell
-pnpm run check          # typecheck + build + test + the release-state check
+pnpm run check          # typecheck + build + test + the release-state checks
 pnpm run lint           # ESLint
 pnpm run format:check   # formatting
 pnpm run check:release  # the release-state invariants on their own
+node scripts/derive-fixture.mjs <recording.jsonl> <fixture.jsonl>  # rebuild a test fixture
 ```
 
-## Releasing
+## Where things are
 
-The flow is [.github/workflows/release.yml](.github/workflows/release.yml); it says at the top what
-it guarantees and what is deliberately this repository's own business. Two things it relies on you
-having done:
+| Question | File |
+|---|---|
+| What does it decide, and which constraints are binding? | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| How do I publish? | [docs/PUBLISHING.md](docs/PUBLISHING.md) |
+| Why was a rule chosen? | [.agents/notes/](.agents/notes/) |
+| What does a user see? | [README.md](README.md) |
+| What must a plugin repository look like? | [plugin conventions](https://github.com/dsh-plugin-lab/.github/blob/main/docs/plugin-conventions.md) |
+| Does something count as a defect? | [criteria](https://github.com/dsh-plugin-lab/.github/blob/main/docs/criteria.md) |
 
-- **Before** a release, bump `version` in [package.json](package.json) and commit it. The flow never
-  bumps it, and that is asserted rather than merely documented.
-- **Once** per repository, on npmjs.com: a Trusted Publisher for this package, naming this
-  repository, `release.yml` and the environment name the workflow declares. Without it, publishing
-  fails with a 404 and nothing in the logs says why.
+The rules themselves live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and nowhere else —
+including the configuration defaults, which the README links to instead of copying.
 
-Labels on merged pull requests decide what the release body says. Which labels exist is this
-repository's own business; the family only fixes how a draft is turned into a body.
+## Rebuilding a fixture
 
-## Document map
+`test/fixtures/` is derived, never hand-edited. To refresh it from a new recording:
 
-- What it offers → [README.md](README.md)
-- Design → [docs/](docs/)
-- Decisions and their evidence → [.agents/notes/](.agents/notes/)
-- Cross-repository conventions → [plugin-conventions](https://github.com/dsh-plugin-lab/.github/blob/main/docs/plugin-conventions.md)
-- Whether something counts as a defect → [criteria](https://github.com/dsh-plugin-lab/.github/blob/main/docs/criteria.md)
+```shell
+node scripts/derive-fixture.mjs "_analysis/session.v4.jsonl" "test/fixtures/stall-run.jsonl"
+```
+
+Then re-read the recording for the turns that actually stall and update the expectations in
+[test/recording.test.ts](test/recording.test.ts). Do not read them off the code's output: that makes
+the suite agree with whatever bug it has.
 
 ## To do
 
-- TODO
+- [ ] Publish to npm, and add the Trusted Publisher on npmjs.com (see [docs/PUBLISHING.md](docs/PUBLISHING.md)).
+- [ ] Verify against a live instance the next time a stall actually happens. The recording replay
+      proves the judgment; it cannot prove the message reaches a provider and continues a real turn.
 
 ## Known traps
 
-- TODO
+- **Never write to the inbox when giving up.** A child agent settles only while its inbox is empty,
+  so a leftover message leaves it unsettled forever and its parent never learns the run ended. See
+  [the turn-stopping decision](.agents/notes/2026-10-26-turn-stopping-and-settlement.md).
+- **A `session/event` listener cannot append.** It runs while the log entry is still open.
+- **Do not judge a stall from `turn/end`.** The end reason is not in the turn-stopping payload, so
+  that seam sees every offer as a completed turn; an aborted turn's close clears the streak instead.
+  Widening it would rescue cancellations.
+- **Fixtures are trimmed.** They keep only what detection reads; changing what the machine needs
+  means editing `scripts/derive-fixture.mjs` and re-deriving, not editing the fixture.
+- **`_analysis/` is git-ignored and holds tens of megabytes.** Do not add it to `files`.
