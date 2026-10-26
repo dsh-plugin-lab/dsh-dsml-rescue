@@ -31,6 +31,19 @@ satisfy that.
 - Run `pnpm run check` locally. It ends with the release-state invariants, which are the part CI
   cannot catch: display metadata, icon, exported locale files, and declaration self-consistency.
 
+## Which changes deserve a release
+
+None of them, if they cannot change what npm serves: documentation, tests, CI, and tooling under
+`.agents/`, `.github/`, `docs/`, `scripts/`, and `test/` merge and stop there. That is not etiquette
+here — [scripts/release-guard.mjs](../scripts/release-guard.mjs) decides it from the paths since the
+last tag, and [release.yml](../.github/workflows/release.yml) refuses to publish when it finds no
+artifact change. The draft Release keeps accumulating those PRs; it goes out with the next change
+that does reach the artifact.
+
+What the guard cannot see is a behaviour-preserving edit inside shipped code — a renamed constant, a
+moved string. That one is a human's answer, so the rule is: if it changes nothing a user can notice,
+let the draft wait.
+
 ## After a release
 
 - The version on npm matches the merged commit, and the market listing shows the new version with
