@@ -12,11 +12,11 @@ instead of a structured tool call, so the harness sees a message with no tool ca
 text. The step ends, the turn closes as `completed`, and the agent goes idle with nothing shown. The
 model believes it acted; nobody received the action.
 
-Three facts from the recording this plugin was built against
+Three facts from the recordings this plugin was built against
 ([evidence](../.agents/notes/the-stall-evidence.md)) shape every rule below:
 
-- the leaked DSML markup is always at the **end** of the reasoning stream, and carries the token
-  `｜｜DSML｜｜` in full-width or ASCII bars,
+- the leaked DSML markup sits at the **end** of the reasoning stream and carries the token
+  `｜｜DSML｜｜`, whose bars every sample we hold writes full-width,
 - the closing message carries **only** reasoning — no text block, no tool call,
 - the turn is recorded `completed`, so nothing downstream treats it as a failure.
 
@@ -29,19 +29,28 @@ A turn is a rescue candidate when all three hold:
    non-whitespace content would have ended that,
 3. its reasoning ends with leaked DSML markup.
 
+"Actionable" has three edges worth naming, because the word alone invites the wrong reading.
+Reasoning **never** counts as actionable, however long it is: that is where the leak lives, not
+where the work lands. An **unknown** block type does count, deliberately — a provider that adds a
+content kind this plugin has never seen is likelier to have produced output than nothing, and a false
+rescue costs one request. And an empty reasoning stream is **not** a leak: a turn that produced
+nothing at all is a different failure and stays out of scope.
+
 The third condition is deliberately narrow. A turn that ended empty for any other reason is left
 alone, because a rescue would spend a request to hide a different failure. The marker is read from
-[a normalization pass](../src/protocol.ts) rather than a list of spellings: full-width bars,
-ASCII bars, and mixed case all collapse to one form.
+[a normalization pass](../src/protocol.ts) rather than a list of spellings, so full-width bars,
+ASCII bars and mixed case all arrive as one form — that is a property of the matcher, not something
+every sample shows: every marker we have on record writes the bars full-width.
 
-Matching is limited to the **last few non-blank lines** and requires the line to open with `<`. Both
-limits exist for the same reason: a model *discussing* this failure quotes the markup mid-sentence,
-and that must not count as suffering from it.
+Matching is limited to the **last three non-blank lines** and requires the line to open with `<`.
+Both limits exist for the same reason: a model *discussing* this failure quotes the markup
+mid-sentence, and that must not count as suffering from it.
 
-The matcher anchors on the **marker**, never on the token name after it. That is what makes
-tokenizer spellings a non-issue: a byte-level tokenizer writes a space or underscore as `▁`
-(U+2581), and NFKC does not fold it, so `</｜｜DSML｜｜tool▁calls>` would defeat a matcher that
-expected a specific token — it does not defeat one that stops at the marker.
+For the same reason the matcher anchors on the **marker**, never on the token name after it. This is
+a robustness argument rather than an observation: a byte-level tokenizer writes a space or
+underscore as `▁` (U+2581), and NFKC does not fold it, so a hypothetical
+`</｜｜DSML｜｜tool▁calls>` would defeat a matcher expecting a specific token — it does not defeat
+one that stops at the marker. No recording we hold contains that spelling yet.
 
 ## The decision
 
@@ -50,17 +59,22 @@ different reasons: recognition follows new evidence, limits follow the operator'
 
 | Situation | Decision | Effect on the streak |
 |---|---|---|
-| candidate, budget left, nobody waiting | continue the turn | +1 |
+| candidate, rescue budget left, nobody waiting | continue the turn | +1 |
 | candidate, a human prompt already queued | stay out of the way | unchanged |
-| candidate, budget spent | stop | cleared |
-| step spent its whole output budget | nothing | cleared |
+| candidate, rescue budget spent | stop | cleared |
+| a human prompt arrives | nothing | cleared |
+| the closing step spent its whole output ceiling | nothing | cleared |
 | not a candidate | nothing | cleared |
 | turn ended aborted or errored | nothing | cleared |
 
-Three orderings are load-bearing. The cap outranks a waiting human, so a spent budget is always
+The streak clears on two facts only: human input, because the human now owns the conversation, and
+a turn that ended abnormally, because a different failure is a different failure. The plugin's own
+notices never clear it.
+
+Three orderings are load-bearing. The rescue cap outranks a waiting human, so a spent cap is always
 recorded rather than deferred forever. An abnormal turn clears the streak: continuing a turn that
 failed for its own reason would hide the cause. And **a step that was cut off at its output ceiling
-is not a stall**: it owes an answer it never got to write, so continuing it would buy another budget
+is not a stall**: it owes an answer it never got to write, so continuing it would buy another ceiling
 to be cut off from.
 
 That last exclusion cannot come from the seam, which carries no stop reason, and the host's own
@@ -102,11 +116,18 @@ handled at the seam, because it leaves the turn normal and only accounting can t
 One fixed sentence, and it never mentions the cause. The cause sits below the model, so stating it
 cannot change behaviour, and naming the markup risks having the model repeat it. The sentence gives
 one instruction (take the next step) and one legal exit (summarize if finished), so a continuation
-cannot become an open-ended loop.
+cannot become an open-ended loop:
+
+> Continue with the task. Take the next concrete step now, using a tool if needed. If the work is
+> complete, reply with a short summary.
+
+[src/messages.ts](../src/messages.ts) is the live source of that text — this block is a quotation,
+and a redline test fails the build if the two ever disagree. It is fixed rather than configurable:
+a rewording is a code change with its own review, not a setting.
 
 The message carries its own source kind, so it is durable, attributable, and visibly not something
-a human typed. Its one-line summary names the round, which is the only place the round number
-appears.
+a human typed. Its one-line summary (`Auto-continue 2/3`) names the round, which is the only place
+the round number appears.
 
 ## Configuration
 
@@ -127,7 +148,7 @@ at load rather than silently never continuing.
 Breaking any of these is a defect, not a preference.
 
 - **No append from an event observer.** The inbox splice happens at turn-stopping only.
-- **No write to the inbox when the budget is spent.** See the settlement constraint above.
+- **No write to the inbox when the rescue budget is spent.** See the settlement constraint above.
 - **No throw from a listener.** A listener error would turn a finished turn into a failed one.
 - **The message stays neutral and fixed.** No cause, no round number in the text.
 - **Judgment stays out of the entry file.** Recognition and limits are pure modules, so the recorded
@@ -150,15 +171,10 @@ and `messages` touch the host.
 
 ## Verification
 
-- Unit suites per layer, in `test/`.
-- **Host-facing suite** — [test/runtime.test.ts](../test/runtime.test.ts) mounts the plugin on a real
-  Cordis context and drives whole turns through it. It is the only suite that reaches the module
-  that translates events and performs the side effect; everything else it touches is the real
-  implementation, with only the two services and the one method stubbed.
-- **Recording replay** — [test/recording.test.ts](../test/recording.test.ts) runs two real
-  transcripts through the shipped machine. The expectations were read off the recordings, not off
-  the code: eight specific turns must be recognized and thirty must not be.
-- Fixtures are derived, not hand-written: [scripts/derive-fixture.mjs](../scripts/derive-fixture.mjs)
+What each check establishes, and what it leaves open, is [docs/VERIFICATION.md](VERIFICATION.md) —
+including the counts the recording replay asserts. Two facts about the arrangement matter here:
+
+- The replay runs the **shipped** machine over trimmed real transcripts, not a test-only copy, which
+  is why judgment may not move into the entry file.
+- Fixtures are derived, never hand-written: [scripts/derive-fixture.mjs](../scripts/derive-fixture.mjs)
   is the provenance, and the raw recordings stay out of the repository.
-- What none of these establish: that the message reaches a provider and continues a real turn. That
-  needs a live stall, and is tracked in [AGENTS.md](../AGENTS.md).

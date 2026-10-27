@@ -278,6 +278,21 @@ describe('红线：续跑文案中性且固定', () => {
     // The round number lives in the summary, never in the text the model reads.
     expect(CONTINUE_PROMPT).not.toContain('2/3')
   })
+
+  it('ARCHITECTURE 引用的续跑原文与代码一致', () => {
+    // The docs quote the sentence for the reader; the code owns it. A quotation nobody re-checks
+    // goes stale on the first rewording, and this one is quoted precisely so it cannot be retyped.
+    /** Flatten a document: blockquote markers and wrapping are presentation, not text. */
+    const flatten = (source: string): string =>
+      source
+        .replace(/\r?\n>\s?/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    expect(
+      flatten(read('docs/ARCHITECTURE.md')),
+      'ARCHITECTURE 引用的续跑原文与 CONTINUE_PROMPT 不再一致',
+    ).toContain(flatten(CONTINUE_PROMPT))
+  })
 })
 
 /**

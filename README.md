@@ -49,6 +49,7 @@ This plugin types it.
 ## What it does
 
 - Continues a stalled turn: DSML markup at the end of the reasoning, and nothing else produced.
+  Neither half alone is enough — an empty turn without the markup is a different failure.
 - Sends one short, neutral line — carry on, or wrap up if the work is done.
 - Backs off while you are typing.
 - Gives up after a few attempts instead of burning requests.
@@ -60,8 +61,8 @@ This plugin types it.
 dsh plugin --profile web add dsh-dsml-rescue
 ```
 
-Then restart `dsh --profile web`. There is nothing to configure — the defaults are the intended
-behaviour.
+Then restart `dsh --profile web`. There is nothing you need to configure — the defaults are the
+intended behaviour.
 
 Working from source: clone, `pnpm install && pnpm run build`, then
 `dsh plugin --profile web add "$PWD"`.

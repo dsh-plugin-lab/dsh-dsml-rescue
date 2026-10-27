@@ -23,12 +23,15 @@ node scripts/derive-fixture.mjs <recording.jsonl> <fixture.jsonl>  # rebuild a t
 | How do I prove it works, and what does each check miss? | [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | How do I publish? | [docs/PUBLISHING.md](docs/PUBLISHING.md) |
 | Why was a rule chosen? | [.agents/notes/](.agents/notes/) |
-| What does a user see? | [README.md](README.md) |
+| What does a user see? | [README.md](README.md) · [README_zh.md](README_zh.md) |
 | What must a plugin repository look like? | [plugin conventions](https://github.com/dsh-plugin-lab/.github/blob/main/docs/plugin-conventions.md) |
 | Does something count as a defect? | [criteria](https://github.com/dsh-plugin-lab/.github/blob/main/docs/criteria.md) |
 
 The rules themselves live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and nowhere else —
-including the configuration defaults, which the README links to instead of copying.
+including the configuration defaults, which the README links to instead of copying. The one thing
+the two READMEs own is the user-facing summary: what it does, how to install it, what it refuses.
+A fact is written down in ARCHITECTURE first and summarised in the READMEs after; the READMEs never
+state a rule the architecture does not.
 
 ## Rebuilding a fixture
 
@@ -52,13 +55,16 @@ the suite agree with whatever bug it has.
 
 ## Known traps
 
-- **Never write to the inbox when giving up.** A child agent settles only while its inbox is empty,
-  so a leftover message leaves it unsettled forever and its parent never learns the run ended. See
-  [the turn-stopping decision](.agents/notes/2026-10-26-turn-stopping-and-settlement.md).
-- **A `session/event` listener cannot append.** It runs while the log entry is still open.
-- **Do not judge a stall from `turn/end`.** The end reason is not in the turn-stopping payload, so
-  that seam sees every offer as a completed turn; an aborted turn's close clears the streak instead.
-  Widening it would rescue cancellations.
+One line each, plus where the rule itself lives — the reasoning is not repeated here.
+
+- **Never write to the inbox when giving up.** A leftover message leaves a capped-out child
+  unsettled forever. →
+  [where the continuation is queued](docs/ARCHITECTURE.md#where-the-continuation-is-queued)
+  ([why](.agents/notes/2026-10-26-turn-stopping-and-settlement.md))
+- **A `session/event` listener cannot append.** It runs while the log entry is still open. → the
+  [same section](docs/ARCHITECTURE.md#where-the-continuation-is-queued).
+- **Do not judge a stall from `turn/end`.** That seam cannot see the end reason, so widening it would
+  rescue cancellations. → [the decision](docs/ARCHITECTURE.md#the-decision)
 - **Fixtures are trimmed.** They keep only what detection reads; changing what the machine needs
   means editing `scripts/derive-fixture.mjs` and re-deriving, not editing the fixture.
 - **`_analysis/` is git-ignored and holds tens of megabytes.** Do not add it to `files`.

@@ -74,10 +74,21 @@ describe('recorded session with eight leaking stalls', () => {
     expect([...replay(events, 3).values()]).toEqual(Array.from({ length: 8 }, () => 'rescue 1/3'))
   })
 
-  it('leaves an aborted turn alone', () => {
-    // Turn 14 was cancelled by the user and closed with the same leaking
-    // reasoning as a stall. A rescue would hide the cancellation.
-    expect(replay(events, 3).has(14)).toBe(false)
+  it('offers turn-stopping only for turns that closed normally', () => {
+    // The loop throws on a cancelled turn instead of offering turn-stopping, so the replay harness
+    // must synthesise an offer only for a completed close. This guards the harness, not the
+    // detector: if it started offering for aborted turns, the replay would be testing a seam the
+    // host never reaches. The second assertion keeps the guard from going vacuous — a recording
+    // with no aborted turn has nothing to exclude.
+    const aborted = new Set<number>()
+    const completed = new Set<number>()
+    for (const event of events) {
+      if (event.kind !== 'turn-end') continue
+      ;(event.completed ? completed : aborted).add(event.turn)
+    }
+    expect(aborted.size).toBeGreaterThan(0)
+    for (const turn of replay(events, 3).keys())
+      expect(completed.has(turn), `turn ${turn} closed abnormally`).toBe(true)
   })
 })
 

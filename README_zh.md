@@ -45,7 +45,7 @@ DSML（DeepSeek Markup Language）是 DeepSeek 表示工具调用的协议标记
 
 ## 它做什么
 
-- 只救空转的轮次：推理过程末尾带着 DSML 标记，而且没有产出任何别的内容。
+- 只救空转的轮次：推理过程末尾带着 DSML 标记，而且没有产出任何别的内容。两个条件缺一不可——空转但末尾没有标记，是另一种失败。
 - 发一句很短、很中性的话：接着做，或者已经做完就收尾。
 - 你正在打字时它让开。
 - 连着几次没救回来就收手，不会一直烧请求。
@@ -57,7 +57,7 @@ DSML（DeepSeek Markup Language）是 DeepSeek 表示工具调用的协议标记
 dsh plugin --profile web add dsh-dsml-rescue
 ```
 
-然后重启 `dsh --profile web`。不需要配置，默认值就是预期行为。
+然后重启 `dsh --profile web`。不需要你配置什么，默认值就是预期行为。
 
 从源码装：先 clone，`pnpm install && pnpm run build`，再 `dsh plugin --profile web add "$PWD"`。
 

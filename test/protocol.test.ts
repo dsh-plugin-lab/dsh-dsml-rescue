@@ -10,8 +10,10 @@ describe('hasLeakedProtocolTail', () => {
     expect(hasLeakedProtocolTail(`Let me proceed.\n${FULL_WIDTH}`)).toBe(true)
   })
 
-  it('detects a truncated tail with no closing bracket', () => {
-    // The recording contains exactly this: the stream stopped mid-token.
+  it('detects a tail whose last line is not closed', () => {
+    // Not a shape any recording we hold shows — every marker on record closes with `>`. Kept
+    // because the matcher deliberately does not require the closing bracket, and a stream cut
+    // mid-token is the most likely way that leniency pays off.
     expect(hasLeakedProtocolTail('Let me check.\n</｜｜DSML｜｜ parameter')).toBe(true)
   })
 
