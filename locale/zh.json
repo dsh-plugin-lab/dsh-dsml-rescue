@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "DSML Rescue",
+    "title": "DSML 续跑",
     "description": "当 DSML 工具调用标记泄漏进推理过程导致回合停滞时，自动续跑。"
   }
 }
