@@ -13,6 +13,7 @@ pnpm run lint           # ESLint
 pnpm run format:check   # formatting
 pnpm run check:release  # the release-state invariants on their own
 pnpm run doctor         # is the plugin mounted in a profile, and is lib/ current? (exit 1 = no)
+pnpm run check:declaration  # does the declared host range still cover the line users install? (network)
 node scripts/derive-fixture.mjs <recording.jsonl> <fixture.jsonl>  # rebuild a test fixture
 ```
 

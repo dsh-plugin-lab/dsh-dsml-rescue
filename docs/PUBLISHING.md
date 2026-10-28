@@ -31,6 +31,26 @@ satisfy that.
 - Run `pnpm run check` locally. It ends with the release-state invariants, which are the part CI
   cannot catch: display metadata, icon, exported locale files, and declaration self-consistency.
 
+## Does the declaration still cover the line users install?
+
+`engines.dsh` and every `@deepseek-ai/dsh-*` edge name the host the plugin runs on. That range is not
+a fact about this repository — it is a claim about npm, and npm moves. `pnpm run check:declaration`
+asks npm itself whether the claim still holds:
+
+```shell
+pnpm run check:declaration              # every declared line
+pnpm run check:declaration -- --line next   # one line
+```
+
+It judges the **declared** lines rather than the newest release: a dist-tag that has moved past a
+declared family is a prompt to re-examine the floor, not a failure. Nothing here decides semver by
+hand — the ranges are matched by npm's own implementation, because a hand-rolled comparison of
+prerelease ranges produces false greens.
+
+Exit codes: `0` every declared range covers every target line, `1` one does not, `2` usage or
+precondition (no network, no registry) — and a precondition failure is reported as such rather than
+as "the range does not cover", which would read an infrastructure fault as a declaration problem.
+
 ## Which changes deserve a release
 
 None of them, if they cannot change what npm serves: documentation, tests, CI, and tooling under
