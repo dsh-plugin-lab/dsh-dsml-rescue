@@ -51,6 +51,27 @@ Exit codes: `0` every declared range covers every target line, `1` one does not,
 precondition (no network, no registry) — and a precondition failure is reported as such rather than
 as "the range does not cover", which would read an infrastructure fault as a declaration problem.
 
+The other half of the question is what npm is actually serving **now**, and whether the code still
+runs against it. [scripts/compat-swap.mjs](../scripts/compat-swap.mjs) rewrites the declared ranges
+onto one line and reinstalls:
+
+```shell
+node scripts/compat-swap.mjs check                 # the live version of each managed package per line
+node scripts/compat-swap.mjs swap --line next      # rewrite package.json onto that line, then install
+node scripts/compat-swap.mjs verify --line next    # assert node_modules really landed there
+```
+
+Three details are load-bearing. The rewrite **preserves the operator** — it only moves version
+numbers, so `^` stays `^` and the union stays a union; whatever shape `package.json` uses, the swap
+does not silently convert it. `engines.dsh` is swapped in the same pass as the dependency edges,
+because the redline that asserts they are byte-identical would otherwise go red for a reason that has
+nothing to do with compatibility. And `verify` exists because an install can leave `node_modules` on
+the old versions while appearing to succeed, which would run the suite against dependencies nobody
+declared — a green result about the wrong tree.
+
+`node scripts/compat-swap.mjs selftest` runs the range-rewriting table offline, and
+[test/compat-swap.test.ts](../test/compat-swap.test.ts) holds it to that.
+
 ## Which changes deserve a release
 
 None of them, if they cannot change what npm serves: documentation, tests, CI, and tooling under
