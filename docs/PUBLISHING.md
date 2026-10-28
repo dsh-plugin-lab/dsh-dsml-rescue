@@ -72,6 +72,36 @@ declared — a green result about the wrong tree.
 `node scripts/compat-swap.mjs selftest` runs the range-rewriting table offline, and
 [test/compat-swap.test.ts](../test/compat-swap.test.ts) holds it to that.
 
+## The weekly patrol
+
+Neither question above can be answered by reading this repository, and both decay without anyone
+touching the code — which is why [compat.yml](../.github/workflows/compat.yml) asks them on a
+schedule (Mondays 02:00 UTC) instead of on every push. It reinstalls the whole dependency tree, so
+per-push would spend minutes to learn nothing on most days.
+
+| Job | Runs | Blocking |
+|---|---|---|
+| `declaration` | `pnpm run check:declaration` — installs nothing | `next`, the commitment line |
+| `swap (next)` | swap onto `next`, typecheck, full suite, verify | yes — red means fix it |
+| `swap (0.2.0-rc)` | same, narrowed to that family | no — recorded |
+| `swap (0.1.7-rc)` | same, narrowed to that family | no — recorded |
+
+Two properties are deliberate. **`next` is the commitment line** — it is the RC line where the host
+actually runs and where every declared floor sits, so it blocks. The other two families are promised
+by `engines.dsh` and must be exercised, but they do not block: three blocking legs would open three
+red jobs for one upstream move and dilute what red means. And **recorded is not unnoticed**: any
+failure opens or updates one issue with a fixed title, through
+[scripts/report-compat-failure.mjs](../scripts/report-compat-failure.mjs), and a repeat of the same
+failure adds no comment — so a weekly red cannot quietly rot. A scheduled run's failure mail goes only
+to whoever last touched the cron entry, which is why the issue is the notification.
+
+The `next` leg is narrowed with `--only` on purpose. Under a union range the installer prefers
+whatever `latest` points at when that satisfies the range, so an unnarrowed swap can produce a mixed
+tree whose `verify` failure is an artefact of the narrowing, not an incompatible host.
+
+Version numbers are absent from the workflow on purpose: they drift, and a redline would then go red
+for writing a number down. Read them live with `node scripts/compat-swap.mjs check`.
+
 ## Which changes deserve a release
 
 None of them, if they cannot change what npm serves: documentation, tests, CI, and tooling under

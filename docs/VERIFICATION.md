@@ -45,7 +45,7 @@ is never restored by re-adding, and the output still reads like success.
 
 ```shell
 pnpm run doctor                                   # $DSH_HOME, $DSH_PROFILE, else ~/.dsh and web
-pnpm run doctor -- --profile web --home C:/Users/me/.dsh
+pnpm run doctor -- --profile web --home <DSH_HOME>
 pnpm run doctor -- --json
 ```
 
