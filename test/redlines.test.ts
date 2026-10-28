@@ -11,10 +11,35 @@
  * would be the two-sources-of-truth failure this file exists to prevent.
  */
 
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { CONTINUE_PROMPT, createRescueMessage } from '../src/messages.ts'
+
+/**
+ * Read the **committed** `package.json`.
+ *
+ * Anything judging what this package *promises* has to read this copy: the compatibility patrol
+ * narrows the working tree to one family (`compat-swap.mjs swap --only`) to measure that family,
+ * and that narrowing is a one-off measurement which is never committed. Reading the working tree
+ * would report the measurement as a defect — the patrol could then never be green.
+ *
+ * Returns undefined where there is no history to read (a published tarball, a git-less checkout);
+ * callers decide how to degrade.
+ */
+function readCommittedPackageJson(): { engines?: Record<string, string> } | undefined {
+  const result = spawnSync('git', ['show', 'HEAD:package.json'], {
+    cwd: new URL('..', import.meta.url),
+    encoding: 'utf8',
+  })
+  if (result.status !== 0 || typeof result.stdout !== 'string') return undefined
+  try {
+    return JSON.parse(result.stdout) as { engines?: Record<string, string> }
+  } catch {
+    return undefined
+  }
+}
 
 /** Drop block and line comments, so prose about a rule cannot trip the guard for that rule. */
 function stripComments(source: string): string {
@@ -114,13 +139,35 @@ describe('声明面自洽', () => {
     expect(engine).not.toContain('workspace:')
   })
 
-  it('engines.dsh 承诺三族，且每族都点名了一条具体线', () => {
+  it('engines.dsh 的每一族都点名了一条具体线', () => {
     const families = engine.split('||').map((branch) => branch.trim())
-    expect(families).toHaveLength(3)
+    expect(families.length).toBeGreaterThan(0)
     for (const branch of families) {
       // A bare version lets the next/alpha lines blur together; a prerelease segment keeps them apart.
       expect(branch).toMatch(/^(?:>=|\^|~|=)?\s*\d+\.\d+\.\d+-[0-9A-Za-z.-]+/)
     }
+  })
+
+  it('已提交的 engines.dsh 承诺三族 —— 删掉一族等于缩窄对外承诺', () => {
+    // Read the **committed** manifest, not the working tree: the compatibility patrol narrows the
+    // working copy to a single family with `swap --only` to measure one family, and that measurement
+    // is never committed. Judging the working tree would report the measurement as a defect.
+    const committed = readCommittedPackageJson()
+    if (committed === undefined) return
+    const declared = committed.engines?.['dsh'] ?? ''
+    const families = declared
+      .split('||')
+      .map((branch) => /(\d+\.\d+\.\d+)/.exec(branch)?.[0])
+      .filter((tuple): tuple is string => tuple !== undefined)
+    expect(families, `已提交的 engines.dsh 读不出三族：${declared}`).toHaveLength(3)
+    // 0.1.7 is a real compatibility fix, not a precaution: a release once raised the floor past it
+    // and declared those users incompatible.
+    expect(families).toContain('0.1.7')
+    // The two RC tuples are deliberately not written down: npm matches a prerelease candidate only
+    // against a comparand naming the same major.minor.patch, so every host side release on a new
+    // patch level forces the family to move by hand. What this holds is "do not lose a promised
+    // family", not a pinned version.
+    expect(families.filter((tuple) => tuple !== '0.1.7')).toHaveLength(2)
   })
 
   it('每个 @deepseek-ai/dsh-* 声明与 engines.dsh 逐字相同', () => {
