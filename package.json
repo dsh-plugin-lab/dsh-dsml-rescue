@@ -63,6 +63,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "doctor": "node scripts/doctor.mjs",
+    "check:declaration": "node scripts/check-declaration.mjs",
     "check:release": "node scripts/check-release.mjs",
     "check": "pnpm run typecheck && pnpm run build && pnpm run test && pnpm run check:release"
   },
