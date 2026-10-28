@@ -20,6 +20,43 @@ establish. The design these checks protect is in [ARCHITECTURE.md](ARCHITECTURE.
 The recording fixtures are derived, not hand-written; see `scripts/derive-fixture.mjs` and the
 evidence note under [.agents/notes/](../.agents/notes/).
 
+## The install check
+
+`pnpm run doctor` answers a question no test run can: **is this plugin mounted in a profile at all,
+and is the build the one in `src/`?**
+
+It has to live outside the plugin. An unmounted plugin has no code running, so it cannot report its
+own absence, and nothing in the host warns either: a package can sit in a profile's `dependencies`
+and still never load, because the loader mounts only what a bundle-list entry or a patch row names.
+The symptom is exactly the failure this plugin exists to shorten — a stalled turn with no
+continuation and no diagnostic — which is indistinguishable from the plugin working on a turn that
+never stalled.
+
+Two checks, both silent failures otherwise:
+
+| Check | Establishes | Does not establish |
+|---|---|---|
+| profile `package.json` | the package is a dependency **and** named in `dsh.profile.bundles`, or that a patch row mounts it | that the row survived loading — a later layer may still replace it, which only `dsh --dump-config` shows |
+| build freshness | `lib/` is at least as new as `src/` | that the built code behaves — that is what the suites above are for |
+
+The repair it prints when the bundle-list entry is missing is **remove, then add**. Re-running the
+add alone does not work: the installer skips packages that are already dependencies, so a lost entry
+is never restored by re-adding, and the output still reads like success.
+
+```shell
+pnpm run doctor                                   # $DSH_HOME, $DSH_PROFILE, else ~/.dsh and web
+pnpm run doctor -- --profile web --home C:/Users/me/.dsh
+pnpm run doctor -- --json
+```
+
+Exit codes: `0` mounted and current, `1` not mounted or a stale build, `2` no readable profile
+manifest. The installed package ships the same file as `dsh-dsml-rescue-doctor`, so a machine
+without the repository can run it too.
+
+What it leaves open: whether the host actually mounted the row. `dsh --dump-config --profile <name>`
+is the authority there — a row this check can see may still be replaced wholesale by a later
+composition layer.
+
 ## The end-to-end check
 
 None of the suites above reach a provider, so they cannot prove the loop acts on the queued message.

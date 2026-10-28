@@ -23,6 +23,9 @@
   "type": "module",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
+  "bin": {
+    "dsh-dsml-rescue-doctor": "./scripts/doctor.mjs"
+  },
   "exports": {
     ".": {
       "types": "./lib/index.d.ts",
@@ -37,6 +40,7 @@
     "icon.svg",
     "locale/*.json",
     "cordis.patch.yml",
+    "scripts/doctor.mjs",
     "README.md",
     "LICENSE",
     "README_zh.md"
@@ -58,6 +62,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "doctor": "node scripts/doctor.mjs",
     "check:release": "node scripts/check-release.mjs",
     "check": "pnpm run typecheck && pnpm run build && pnpm run test && pnpm run check:release"
   },

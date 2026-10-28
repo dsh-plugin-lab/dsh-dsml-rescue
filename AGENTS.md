@@ -12,6 +12,7 @@ pnpm run check          # typecheck + build + test + the release-state checks
 pnpm run lint           # ESLint
 pnpm run format:check   # formatting
 pnpm run check:release  # the release-state invariants on their own
+pnpm run doctor         # is the plugin mounted in a profile, and is lib/ current? (exit 1 = no)
 node scripts/derive-fixture.mjs <recording.jsonl> <fixture.jsonl>  # rebuild a test fixture
 ```
 
@@ -68,3 +69,9 @@ One line each, plus where the rule itself lives — the reasoning is not repeate
 - **Fixtures are trimmed.** They keep only what detection reads; changing what the machine needs
   means editing `scripts/derive-fixture.mjs` and re-deriving, not editing the fixture.
 - **`_analysis/` is git-ignored and holds tens of megabytes.** Do not add it to `files`.
+- **A dependency without a bundle-list entry never loads, and nothing says so.** The loader mounts
+  only what `dsh.profile.bundles` (or a patch row) names, and re-running `add` does not repair a lost
+  entry — it skips packages that are already dependencies. Repair is remove-then-add; check with
+  `pnpm run doctor`. → [the install check](docs/VERIFICATION.md#the-install-check)
+- **`lib/` is the code a `link:` install runs.** Editing `src/` without `pnpm run build` changes
+  nothing at runtime, with no error — `pnpm run doctor` compares the two.
