@@ -19,7 +19,7 @@
  *
  * Usage:
  *   node scripts/doctor.mjs                        # $DSH_HOME, $DSH_PROFILE, else ~/.dsh + web
- *   node scripts/doctor.mjs --profile web --home C:/Users/me/.dsh
+ *   node scripts/doctor.mjs --profile web --home <DSH_HOME>
  *   node scripts/doctor.mjs --json                 # machine-readable
  *
  * Exit codes: 0 = mounted and current / 1 = not mounted, or the build is stale / 2 = precondition
