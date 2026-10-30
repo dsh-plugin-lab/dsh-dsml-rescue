@@ -53,8 +53,6 @@ the suite agree with whatever bug it has.
 - [ ] Confirm the ordering guarantee against a live parent/child pair: the reasoning is derived from
       the subagent settlement contract, not observed. See
       [docs/VERIFICATION.md](docs/VERIFICATION.md#what-still-cannot-be-checked-here).
-- [ ] The draft Release holds only tooling and documentation PRs so far; leave it until a change
-      reaches the artifact — see [docs/PUBLISHING.md](docs/PUBLISHING.md#which-changes-deserve-a-release).
 
 ## Known traps
 

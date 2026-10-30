@@ -1,6 +1,6 @@
 {
   "name": "dsh-dsml-rescue",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Auto-continues turns stalled by DSML tool-call markup leaking into reasoning.",
   "keywords": [
     "dsh",
