@@ -113,13 +113,19 @@ handled at the seam, because it leaves the turn normal and only accounting can t
 
 ## The message
 
-One fixed sentence, and it never mentions the cause. The cause sits below the model, so stating it
-cannot change behaviour, and naming the markup risks having the model repeat it. The sentence gives
-one instruction (take the next step) and one legal exit (summarize if finished), so a continuation
-cannot become an open-ended loop:
+One fixed instruction, and it never mentions the cause. The cause sits below the model, so stating it
+cannot change behaviour, and naming the markup risks having the model repeat it:
 
-> Continue with the task. Take the next concrete step now, using a tool if needed. If the work is
-> complete, reply with a short summary.
+> Continue with the task. Take the next concrete step now, using a tool if needed.
+
+It carries no clause inviting the model to declare the work finished, and that omission is a rule
+rather than an economy. The cap in [Configuration](#configuration) is what bounds a rescue, so the
+text has no loop to prevent; a completion clause would only add a cheaper way out than doing the work.
+Its premise cannot hold where it is read either: the turn being continued ended with a call that
+never landed, so the next step has not happened yet. A model that takes such an exit answers in
+prose, that answer is actionable output, detection stops treating the turn as a stall, and the run
+ends with the work undone. Judging whether work is finished is a signal this plugin deliberately does
+not use ([why](../.agents/notes/2026-10-30-the-message-offers-no-completion-clause.md)).
 
 [src/messages.ts](../src/messages.ts) is the live source of that text — this block is a quotation,
 and a redline test fails the build if the two ever disagree. It is fixed rather than configurable:
@@ -150,7 +156,8 @@ Breaking any of these is a defect, not a preference.
 - **No append from an event observer.** The inbox splice happens at turn-stopping only.
 - **No write to the inbox when the rescue budget is spent.** See the settlement constraint above.
 - **No throw from a listener.** A listener error would turn a finished turn into a failed one.
-- **The message stays neutral and fixed.** No cause, no round number in the text.
+- **The message stays neutral and fixed.** No cause, no completion clause, no round number in the
+  text.
 - **Judgment stays out of the entry file.** Recognition and limits are pure modules, so the recorded
   sessions in `test/fixtures/` exercise the shipped code rather than a test-only copy.
 
