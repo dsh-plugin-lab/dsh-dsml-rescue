@@ -40,10 +40,10 @@ describe('continuation message', () => {
       .content.flatMap((block) => (block.type === 'text' ? [block.text] : []))
       .join('')
 
-  it('asks for the next step and offers a way to close out', () => {
+  it('asks for the next step and nothing about being finished', () => {
     expect(textOf(1)).toBe(CONTINUE_PROMPT)
     expect(textOf(1)).toContain('next concrete step')
-    expect(textOf(1)).toContain('short summary')
+    expect(textOf(1).toLowerCase()).not.toContain('summary')
   })
 
   it('never explains the cause to the model', () => {

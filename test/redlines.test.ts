@@ -300,7 +300,8 @@ describe('红线：唯一的副作用在 turn-stopping', () => {
  *
  * The cause sits below the model, so naming it cannot change behaviour and risks having the model
  * repeat the markup. The text is fixed rather than configurable, and it carries exactly one
- * instruction plus one legal exit, so a rescue cannot become an open-ended loop.
+ * instruction and no completion clause: the cap is what bounds a rescue, so a clause inviting the
+ * model to say the work is done is only a cheaper exit than doing the work.
  */
 describe('红线：续跑文案中性且固定', () => {
   it('文案不提原因，也不提方言名', () => {
@@ -309,9 +310,13 @@ describe('红线：续跑文案中性且固定', () => {
     }
   })
 
-  it('文案只给一件事和一个合法出口', () => {
+  it('文案只给一件事，不给「已完成」的出口', () => {
     expect(CONTINUE_PROMPT).toContain('Continue with the task')
-    expect(CONTINUE_PROMPT).toContain('If the work is complete')
+    // Negative control. The words that once let a stalled model end the run were removed on purpose;
+    // restoring them is the change this assertion exists to catch, and a positive assertion cannot.
+    for (const word of ['complete', 'finish', 'done', 'summar']) {
+      expect(CONTINUE_PROMPT.toLowerCase(), word).not.toContain(word)
+    }
   })
 
   it('消息带自身来源，摘要里才出现轮次', () => {
