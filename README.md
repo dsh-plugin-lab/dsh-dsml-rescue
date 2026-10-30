@@ -5,8 +5,8 @@
 <h1 align="center">dsh-dsml-rescue</h1>
 
 <div align="center">
-  <p><strong>A stalled turn gets another one</strong></p>
-  <p><em>空转的轮次，替你续上</em></p>
+  <p><strong>A turn stalled by leaked DSML markup gets another one</strong></p>
+  <p><em>DSML 泄漏导致的空转，替你续上</em></p>
 
   <p>
     <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
@@ -39,6 +39,10 @@ tool call, nothing. The reasoning output ended with lines like these:
 </｜｜DSML｜｜ invoke>
 </｜｜DSML｜｜ calls>
 ```
+
+<p align="center">
+  <img src="assets/dsml-leak-rescue.png" width="900" alt="The web UI after a stalled turn: the reasoning ends with leaked DSML markup, then the turn stops with no answer">
+</p>
 
 DSML (DeepSeek Markup Language) is how DeepSeek formats a tool call. Some provider routes hand that
 markup back as **ordinary reasoning text** instead of an actual call, so the call never happens, the

@@ -352,8 +352,8 @@ describe('红线：续跑文案中性且固定', () => {
  *
  * The market and every installer fetch this package to read `locale/` and the icon. Facade images
  * belong in the repository and the README references them relatively — both surfaces that render a
- * README resolve that path. This repository has no `assets/` directory, so the first assertion is
- * the shape that keeps one from ever being added to `files` by accident.
+ * README resolve that path. `assets/` holds those images (the stall screenshot), and the first
+ * assertion is the shape that keeps the directory from ever being added to `files`.
  */
 describe('红线：门面图不进包，README 用相对路径', () => {
   it('files 不覆盖 assets/', () => {

@@ -5,8 +5,8 @@
 <h1 align="center">dsh-dsml-rescue</h1>
 
 <div align="center">
-  <p><strong>空转的轮次，替你续上</strong></p>
-  <p><em>A stalled turn gets another one</em></p>
+  <p><strong>DSML 泄漏导致的空转，替你续上</strong></p>
+  <p><em>A turn stalled by leaked DSML markup gets another one</em></p>
 
   <p>
     <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" alt="powered by dsh"></a>
@@ -38,6 +38,10 @@
 </｜｜DSML｜｜ invoke>
 </｜｜DSML｜｜ calls>
 ```
+
+<p align="center">
+  <img src="assets/dsml-leak-rescue.png" width="900" alt="网页界面里的一次空转：推理末尾是泄漏的 DSML 标记，这一轮就此停下，没有回答">
+</p>
 
 DSML（DeepSeek Markup Language）是 DeepSeek 表示工具调用的协议标记。某些 provider 路由会把这段标记当成**普通推理文本**返回，而不是真的发出调用；于是调用没有发生，这一轮空着结束，所有人都在等一句「继续」。
 
