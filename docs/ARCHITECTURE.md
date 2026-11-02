@@ -6,51 +6,65 @@ only place the rules are written down: the code comments explain one line, and t
 
 ## The failure it answers
 
-A model emits a tool call. On some provider routes that call arrives as **reasoning text** carrying
-**DSML markup** — DeepSeek Markup Language, the dialect DeepSeek uses to express a tool call —
-instead of a structured tool call, so the harness sees a message with no tool call and no visible
-text. The step ends, the turn closes as `completed`, and the agent goes idle with nothing shown. The
-model believes it acted; nobody received the action.
+A model emits a tool call. On some provider routes that call arrives as **message content**
+carrying **DSML markup** — DeepSeek Markup Language, the dialect DeepSeek uses to express a tool
+call — instead of a structured tool call, so the harness sees a message with no tool call. The
+route decides which content kind the markup lands in: some hand it back as reasoning, some as
+visible text. Either way the message **ends** on it. The step ends, the turn closes as
+`completed`, and the agent goes idle. The model believes it acted; nobody received the action.
 
 Three facts from the recordings this plugin was built against
 ([evidence](../.agents/notes/the-stall-evidence.md)) shape every rule below:
 
-- the leaked DSML markup sits at the **end** of the reasoning stream and carries the token
+- the leaked DSML markup is the **last** thing the closing message says, and carries the token
   `｜｜DSML｜｜`, whose bars every sample we hold writes full-width,
-- the closing message carries **only** reasoning — no text block, no tool call,
+- the closing message carries **no tool call**,
 - the turn is recorded `completed`, so nothing downstream treats it as a failure.
+
+The placement is a property of the route, not of the failure. Among the recordings held today, one
+route leaks into reasoning and another leaks into visible text — including a message whose entire
+visible text is two closing tokens, and one whose text is the whole call followed by a transcription
+of it ([note](../.agents/notes/2026-11-02-leak-placement-is-the-routes-choice.md)).
 
 ## Detection
 
 A turn is a rescue candidate when all three hold:
 
 1. it closed normally,
-2. its closing message produced nothing actionable — a `tool-call` or a text block with
-   non-whitespace content would have ended that,
-3. its reasoning ends with leaked DSML markup.
+2. its closing message produced no block other than reasoning and text,
+3. its content ends with leaked DSML markup.
 
-"Actionable" has three edges worth naming, because the word alone invites the wrong reading.
-Reasoning **never** counts as actionable, however long it is: that is where the leak lives, not
-where the work lands. An **unknown** block type does count, deliberately — a provider that adds a
-content kind this plugin has never seen is likelier to have produced output than nothing, and a false
-rescue costs one request. And an empty reasoning stream is **not** a leak: a turn that produced
-nothing at all is a different failure and stays out of scope.
+Condition 2 is one line with two edges worth naming. Reasoning and text are **content**, whichever
+placements the route used, and neither is output on its own — the tail decides. A **tool call** is
+output, and so is an **unknown** block type, deliberately: a provider that adds a content kind this
+plugin has never seen is likelier to have produced something than nothing, and a false rescue costs
+one request.
 
-The third condition is deliberately narrow. A turn that ended empty for any other reason is left
-alone, because a rescue would spend a request to hide a different failure. The marker is read from
-[a normalization pass](../src/protocol.ts) rather than a list of spellings, so full-width bars,
-ASCII bars and mixed case all arrive as one form — that is a property of the matcher, not something
-every sample shows: every marker we have on record writes the bars full-width.
+Condition 3 reads only the **last non-blank line**, and requires that line to open with `<`. Both
+limits serve the same purpose: a model *discussing* this failure quotes the markup mid-sentence, and
+that must not count as suffering from it. Reading only the last line is also what keeps a turn that
+answered and then kept talking out of the rescue path: whatever the message says after the markup is
+output.
 
-Matching is limited to the **last three non-blank lines** and requires the line to open with `<`.
-Both limits exist for the same reason: a model *discussing* this failure quotes the markup
-mid-sentence, and that must not count as suffering from it.
+**A fenced code block is a quotation, not output.** When a model transcribes the call it meant to
+make, the transcription goes inside a fence; removing those spans before reading the tail is what
+lets a leaked dump followed by a JSON transcription still count, and what keeps a model documenting
+the dialect from counting. Fences are removed **per stream**: a fence cannot span two content
+blocks, so one block's unclosed fence must not blank the next block's reading.
+
+The marker is read from [a normalization pass](../src/protocol.ts) rather than a list of spellings,
+so full-width bars, ASCII bars and mixed case all arrive as one form — that is a property of the
+matcher, not something every sample shows: every marker we have on record writes the bars
+full-width.
 
 For the same reason the matcher anchors on the **marker**, never on the token name after it. This is
 a robustness argument rather than an observation: a byte-level tokenizer writes a space or
 underscore as `▁` (U+2581), and NFKC does not fold it, so a hypothetical
 `</｜｜DSML｜｜tool▁calls>` would defeat a matcher expecting a specific token — it does not defeat
 one that stops at the marker. No recording we hold contains that spelling yet.
+
+An empty message is **not** a leak: a turn that produced nothing at all is a different failure and
+stays out of scope.
 
 ## The decision
 
@@ -165,7 +179,7 @@ Breaking any of these is a defect, not a preference.
 
 | File | Answers |
 |---|---|
-| [src/protocol.ts](../src/protocol.ts) | Does this text end with leaked markup? |
+| [src/protocol.ts](../src/protocol.ts) | Does this content end with leaked markup? |
 | [src/detect.ts](../src/detect.ts) | Does this finished turn count as a stall? |
 | [src/policy.ts](../src/policy.ts) | Continue, stay out of the way, or stop? |
 | [src/machine.ts](../src/machine.ts) | How do those answers compose across a whole turn? |

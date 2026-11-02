@@ -32,7 +32,7 @@
 ## Does this look familiar?
 
 You asked for something. The model reasoned for a while. Then the turn simply ended — no answer, no
-tool call, nothing. The reasoning output ended with lines like these:
+tool call, nothing. What it produced ended with lines like these:
 
 ```
 </｜｜DSML｜｜ parameter>
@@ -41,19 +41,20 @@ tool call, nothing. The reasoning output ended with lines like these:
 ```
 
 <p align="center">
-  <img src="assets/dsml-leak-rescue.png" width="900" alt="The web UI after a stalled turn: the reasoning ends with leaked DSML markup, then the turn stops with no answer">
+  <img src="assets/dsml-leak-rescue.png" width="900" alt="The web UI after a stalled turn: what the model produced ends with leaked DSML markup, then the turn stops with no answer">
 </p>
 
 DSML (DeepSeek Markup Language) is how DeepSeek formats a tool call. Some provider routes hand that
-markup back as **ordinary reasoning text** instead of an actual call, so the call never happens, the
-turn closes with no output, and everything waits for someone to type "continue".
+markup back as ordinary message content instead of an actual call — in the reasoning, or in the
+visible reply. Either way the call never happens, the turn closes with no output, and everything
+waits for someone to type "continue".
 
 This plugin types it.
 
 ## What it does
 
-- Continues a stalled turn: DSML markup at the end of the reasoning, and nothing else produced.
-  Neither half alone is enough — an empty turn without the markup is a different failure.
+- Continues a stalled turn: DSML markup where the message ends, and no tool call. Both halves are
+  needed — an empty turn without the markup is a different failure.
 - Sends one short, neutral line: take the next step — never an offer to declare the work finished.
 - Backs off while you are typing.
 - Gives up after a few attempts instead of burning requests.

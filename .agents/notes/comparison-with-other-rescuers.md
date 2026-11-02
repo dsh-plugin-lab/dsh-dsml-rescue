@@ -19,7 +19,7 @@
 ## ① 长度截断：比原先判断的更严重
 
 原先 `docs/ARCHITECTURE.md` 写的是"无法区分，靠上限兜底"。核过宿主源码后确认更糟：**`turn-stopping`
-对 `max-tokens` 的回合照常派发**（`agent-loop/src/agent.ts:361`），所以一个"思考被截断且尾部带泄漏标记"
+对 `max-tokens` 的回合照常派发**（`agent-loop/src/agent.ts:361`），所以一个"被截断且尾部带泄漏标记"
 的回合会被当成空转续跑——等于再买一份预算给它继续被截断。
 
 修法：不用启发式猜 stop_reason，改用两侧都已发布的账：**收尾消息的 `usage.outputTokens` 与
