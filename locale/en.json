@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "DSML Rescue",
-    "description": "Auto-continues turns stalled by DSML tool-call markup leaking into reasoning."
+    "description": "Auto-continues turns stalled by DSML tool-call markup, wherever the route leaks it."
   }
 }
