@@ -2,13 +2,16 @@
 /**
  * Throwaway OpenAI-compatible endpoint that reproduces the stalled turn.
  *
- * The first request answers with reasoning only, ending in the leaked protocol
- * markup — the shape a real route produced. Every request after that answers
- * normally. That makes the whole failure deterministic: if the plugin works,
- * the run issues a second request without a human typing anything.
+ * The first request answers with the leaked protocol markup and nothing a
+ * caller can act on — the shape a real route produced. Every request after that
+ * answers normally. That makes the whole failure deterministic: if the plugin
+ * works, the run issues a second request without a human typing anything.
+ *
+ * The markup lands in reasoning or in visible text depending on the argument,
+ * because both placements are recorded and both must be rescued.
  *
  * Usage:
- *   node scripts/mock-stall-server.mjs <port> <request-log>
+ *   node scripts/mock-stall-server.mjs <port> <request-log> [reasoning|text]
  *
  * Exit codes: 0 = stopped by signal / 1 = usage error.
  */
@@ -16,14 +19,39 @@
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 
-const [portArg, logPath] = process.argv.slice(2)
+const [portArg, logPath, placementArg = 'reasoning'] = process.argv.slice(2)
 if (portArg === undefined || logPath === undefined) {
-  console.error('usage: node scripts/mock-stall-server.mjs <port> <request-log>')
+  console.error('usage: node scripts/mock-stall-server.mjs <port> <request-log> [reasoning|text]')
+  process.exit(1)
+}
+if (placementArg !== 'reasoning' && placementArg !== 'text') {
+  console.error(`unknown placement "${placementArg}": expected reasoning or text`)
   process.exit(1)
 }
 
 /** The leaked tail a real route emits instead of a structured tool call. */
 const LEAK = '\n</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>'
+
+/**
+ * The stall the mock answers with: the markup, in the placement asked for.
+ * @returns the deltas of one stalled completion.
+ */
+function stallDeltas() {
+  if (placementArg === 'text') {
+    // Visible text carrying the markup, then a fenced transcription of the same
+    // call. No reasoning, no tool call: the turn ends here.
+    return [
+      delta({ role: 'assistant', content: `<｜｜DSML｜｜ calls>${LEAK}\n` }),
+      delta({ content: '```json\n{"name":"mock"}\n```\n' }),
+      delta({}, 'stop'),
+    ]
+  }
+  return [
+    delta({ role: 'assistant', reasoning_content: 'I should call a tool now.' }),
+    delta({ reasoning_content: LEAK }),
+    delta({}, 'stop'),
+  ]
+}
 
 writeFileSync(logPath, '', 'utf8')
 let requests = 0
@@ -84,12 +112,8 @@ const server = createServer((request, response) => {
     // this demo repeatable instead of one-shot per server lifetime.
     const stall = !/^(Generate the session title|Continue with the task)/.test(lastText ?? '')
     if (stall) {
-      // Reasoning only: no `content`, no tool calls. This is the stall.
-      reply(response, [
-        delta({ role: 'assistant', reasoning_content: 'I should call a tool now.' }),
-        delta({ reasoning_content: LEAK }),
-        delta({}, 'stop'),
-      ])
+      // No tool calls, and nothing a caller can act on. This is the stall.
+      reply(response, stallDeltas())
       return
     }
     if ((lastText ?? '').startsWith('Generate the session title')) {

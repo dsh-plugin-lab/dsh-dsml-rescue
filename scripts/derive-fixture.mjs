@@ -8,10 +8,12 @@
  * the recording's identity alongside the result.
  *
  * What is kept, and why:
- * - the **last** assistant message of every turn keeps its block types plus a
- *   tail of its reasoning text and a head of any visible text — that is the
- *   only message the detector ever reads (each turn overwrites the previous
- *   one before the turn closes),
+ * - the **last** assistant message of every turn keeps its block types plus its
+ *   text — that is the only message the detector ever reads (each turn
+ *   overwrites the previous one before the turn closes),
+ * - reasoning keeps only its tail, because detection reads the last line,
+ * - visible text is kept **whole**, because a fenced transcription can open
+ *   thousands of characters before the tail it changes the reading of,
  * - earlier assistant messages keep their **block types only**, so the
  *   ordering fact ("the turn's last message is the one judged") stays testable
  *   without carrying text nobody reads,
@@ -32,9 +34,6 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 /** Characters of reasoning tail kept for a turn's last message. */
 const REASONING_TAIL_CHARS = 1200
-
-/** Characters of visible text kept for a turn's last message. */
-const TEXT_HEAD_CHARS = 200
 
 const [input, output] = process.argv.slice(2)
 if (input === undefined || output === undefined) {
@@ -58,7 +57,7 @@ function trimBlock(block, keepText) {
   const text = typeof block.text === 'string' ? block.text : ''
   if (block.type === 'reasoning')
     return { type: 'reasoning', text: text.slice(-REASONING_TAIL_CHARS) }
-  if (block.type === 'text') return { type: 'text', text: text.slice(0, TEXT_HEAD_CHARS) }
+  if (block.type === 'text') return { type: 'text', text }
   return { type: block.type }
 }
 

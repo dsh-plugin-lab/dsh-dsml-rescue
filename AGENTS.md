@@ -66,6 +66,8 @@ One line each, plus where the rule itself lives — the reasoning is not repeate
   [same section](docs/ARCHITECTURE.md#where-the-continuation-is-queued).
 - **Do not judge a stall from `turn/end`.** That seam cannot see the end reason, so widening it would
   rescue cancellations. → [the decision](docs/ARCHITECTURE.md#the-decision)
+- **A stall is judged by the message's last line, not by its reasoning.** The route decides whether
+  the leak lands in reasoning or in visible text; both are recorded. → [detection](docs/ARCHITECTURE.md#detection)
 - **Fixtures are trimmed.** They keep only what detection reads; changing what the machine needs
   means editing `scripts/derive-fixture.mjs` and re-deriving, not editing the fixture.
 - **`_analysis/` is git-ignored and holds tens of megabytes.** Do not add it to `files`.

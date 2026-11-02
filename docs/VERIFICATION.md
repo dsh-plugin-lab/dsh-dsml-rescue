@@ -10,11 +10,11 @@ establish. The design these checks protect is in [ARCHITECTURE.md](ARCHITECTURE.
 | Check | Establishes | Does not establish |
 |---|---|---|
 | `test/protocol.test.ts` | the markup matcher accepts every spelling of the dialect, ignores tokenizer artifacts in the token name, and rejects a sentence that quotes it | — |
-| `test/detect.test.ts` | a turn counts as a stall only when it produced nothing actionable | — |
+| `test/detect.test.ts` | a turn counts as a stall only when no tool call landed and the message ends on the markup | — |
 | `test/policy.test.ts` | the order of the cap, the human, and the streak reset | — |
 | `test/machine.test.ts` | those answers compose across whole turns, including what ends an automatic run and that a truncated step is excluded | that the token accounting it reads matches a real provider's |
 | `test/runtime.test.ts` | the plugin, mounted on a real Cordis context, translates events, excludes a spent output budget, and queues the continuation | that the host then spends a model request on it |
-| `test/recording.test.ts` | the shipped machine recognizes exactly the eight stalled turns in a real transcript, and none of the other thirty; and the replay harness offers `turn-stopping` only for turns that closed normally | that the same holds for a route that leaks differently |
+| `test/recording.test.ts` | the shipped machine recognizes exactly the stalled turns in four real transcripts — eight and one where the markup was in reasoning, two where it was in the visible text, one where the text was two closing tokens — and none of the other ~135; and the replay harness offers `turn-stopping` only for turns that closed normally | that the same holds for a placement no recording shows |
 | `test/redlines.test.ts` | the rules stated in prose still hold: dependency layering and the one-way module chain, the declared host surface, the four compiler switches, the lockfile, the entry file's emptiness of judgment, the single side effect's location, the neutrality of the message, and the documentation's links | that any of them is the right rule — a redline guards a decision, it does not justify it |
 
 The recording fixtures are derived, not hand-written; see `scripts/derive-fixture.mjs` and the
@@ -61,15 +61,15 @@ composition layer.
 
 None of the suites above reach a provider, so they cannot prove the loop acts on the queued message.
 This check does, deterministically and without a real stall: a local endpoint answers the first
-request with reasoning that ends in the leaked markup — the shape a real route produced — and every
-later request normally.
+request with the leaked markup — the shape a real route produced — and every later request normally.
+The endpoint takes the placement as an argument, so the check covers both recorded ones.
 
 `scripts/mock-stall-server.mjs` is that endpoint. Run it, point a throwaway profile at it, and start
 one task:
 
 ```shell
-# 1. the mock provider (port, then its request log)
-node scripts/mock-stall-server.mjs 18099 "$TEMP/reqs.log"
+# 1. the mock provider: port, then its request log, then where the markup lands
+node scripts/mock-stall-server.mjs 18099 "$TEMP/reqs.log" reasoning   # or: text
 
 # 2. a throwaway profile, so the live ones are untouched
 dsh --profile dsmltest --from-default-profile headless --dump-config
@@ -87,7 +87,7 @@ Pass conditions, in the request log and the terminal:
 
 - the first request is followed by a **second agent request** whose last message is
   `Continue with the task.…` — the plugin's fixed text, unchanged,
-- the terminal prints the model's answer instead of stopping after reasoning,
+- the terminal prints the model's answer instead of stopping at the stall,
 - a `user/message` with source kind `dsml-rescue` is in that session's log.
 
 Three requests in total are expected: the stalled step, a session-title request the host issues on
@@ -102,8 +102,9 @@ Remove the throwaway profile and its sessions afterwards; the check must not tou
   never rescued" is covered only by a synthetic turn in `test/machine.test.ts`. The real recordings
   supply the opposite half: they contain cancelled turns, and the replay shows the loop never offers
   `turn-stopping` for them.
-- A real route that leaks the markup differently. The end-to-end check uses one spelling; widening
-  the matcher is a judgment call that needs a new recording, not a new test.
+- A route that leaks somewhere neither recording shows — mid-message, or after an answer. The
+  matcher reads the last line of every content kind, so a new placement is a judgment call that
+  needs a new recording, not a new test.
 - Whether a parent agent should be told sooner. The ordering guarantee is reasoned from the
   subagent settlement contract in [ARCHITECTURE.md](ARCHITECTURE.md), not observed in a live
   parent/child pair.

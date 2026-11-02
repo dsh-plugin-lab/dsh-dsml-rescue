@@ -7,10 +7,12 @@ import type { MachineEvent, MachineState } from '../src/machine.ts'
 /**
  * The acceptance test: replay real recordings through the shipped reducer.
  *
- * Fixtures are trimmed transcripts of two real sessions — one long session with
- * eight leaking stalls, and one subagent run with a single stall. The derive
- * script records what was kept; `.agents/notes/` records where they came from
- * and what the expectations below were read from.
+ * Fixtures are trimmed transcripts of four real sessions — one long session with
+ * eight leaking stalls whose reasoning carried the markup, one subagent run with
+ * a single stall of that shape, one session where the visible text carried the
+ * markup and a transcription of the call, and one where the text stopped on the
+ * closing tokens alone. The derive script records what was kept; `.agents/notes/`
+ * records where they came from and what the expectations below were read from.
  *
  * The replay restores the one ordering fact a trimmed log cannot carry: the
  * loop offers `turn-stopping` before it closes a completed turn, so each
@@ -58,7 +60,7 @@ describe('recorded session with eight leaking stalls', () => {
   const events = readFixture('stall-run.jsonl')
 
   it('finds every stalled turn and nothing else', () => {
-    // Turns 21, 22, 30, 32, 34, 35, 36, and 37 close with reasoning that ends in
+    // Turns 21, 22, 30, 32, 34, 35, 36, and 37 close with content that ends in
     // leaked protocol markup and carry no other content. The other 30 turns do
     // not, and none of them may be touched: a rescue there would cost a request
     // to fix nothing.
@@ -97,5 +99,25 @@ describe('recorded subagent run', () => {
     // The same failure inside a child is the case that otherwise reaches the
     // parent only as "finished".
     expect([...replay(readFixture('subagent-stall.jsonl'), 3).values()]).toEqual(['rescue 1/3'])
+  })
+})
+
+describe('recorded session whose visible text carried the markup', () => {
+  const events = readFixture('text-leak-run.jsonl')
+
+  it('finds the two turns that dumped the call as text and nothing else', () => {
+    // Turns 66 and 68 answered with the dialect itself, each followed by a fenced
+    // transcription of the same call. Both closed `completed` with no tool call;
+    // the other 67 turns produced output and must be left alone.
+    expect([...replay(events, 3).keys()].sort((left, right) => left - right)).toEqual([66, 68])
+  })
+})
+
+describe('recorded session whose text stopped on the closing tokens', () => {
+  it('rescues the turn that ended on two closing tags and nothing else', () => {
+    // Turn 57 produced 39 characters of visible text: two closing tokens, no
+    // opening ones, no reasoning, no tool call. Every other turn in this
+    // recording said something.
+    expect([...replay(readFixture('text-leak-closing.jsonl'), 3).keys()]).toEqual([57])
   })
 })
