@@ -33,9 +33,9 @@ declare module '@deepseek-ai/dsh-llm' {
  *
  * The rescued turn ended with a tool call that never landed, so the next step
  * has not happened yet; a "say you are done" clause has nothing true to be right
- * about. Taking one is not free either: a prose answer is actionable output, so
- * detection stops calling the turn a stall and the run ends with the work
- * undone.
+ * about. Taking one is not free either: a prose answer is what detection reads as
+ * the message's end, so the turn stops counting as a stall and the run ends with
+ * the work undone.
  */
 export const CONTINUE_PROMPT =
   'Continue with the task. Take the next concrete step now, using a tool if needed.'

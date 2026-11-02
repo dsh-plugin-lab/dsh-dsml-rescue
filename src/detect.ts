@@ -1,10 +1,10 @@
 /**
  * The one judgment this plugin makes: does a finished turn deserve a rescue?
  *
- * It deserves one when the turn ended normally yet produced nothing the loop or
- * the user can act on, and its reasoning ends in leaked protocol markup. Both
- * halves are required — a turn that produced nothing for another reason stays
- * untouched, because rescuing it would paper over an unrelated failure.
+ * It deserves one when the turn ended normally and its closing message ends in
+ * leaked protocol markup. Reasoning and visible text are both content: which of
+ * them the route put the markup in says nothing about whether the work happened,
+ * and the message's last line says everything.
  *
  * Pure: no host types, no events, no clock. The caller adapts real session
  * events into {@link TurnObservation}.
@@ -31,41 +31,36 @@ export interface TurnObservation {
 }
 
 /**
- * Whether one block produced something a caller could act on.
+ * Whether a block carries message content rather than an effect.
  *
- * Reasoning never counts — that is where the leak lives, not where the work
- * lands. An unknown block type does count, on purpose: a provider that adds a
- * content kind this plugin has never seen is far likelier to have produced
- * output than to have produced nothing, and a false rescue costs a request.
+ * Everything else — a tool call, or a content kind this plugin has never seen —
+ * is output the turn produced, so it ends the question.
  * @param block - one content block of the closing message.
- * @returns whether the block is visible text, a tool call, or an unknown kind.
+ * @returns whether the block is reasoning or visible text.
  */
-function isActionable(block: BlockLike): boolean {
-  if (block.type === 'reasoning') return false
-  if (block.type !== 'text') return true
-  return block.text !== undefined && /\S/.test(block.text)
+function isTextBearing(block: BlockLike): boolean {
+  return block.type === 'reasoning' || block.type === 'text'
 }
 
 /**
- * Concatenate every reasoning block of a message.
+ * The text of every text-bearing block, in stream order.
  * @param blocks - the turn's closing content blocks.
- * @returns the joined reasoning text, or the empty string when there is none.
+ * @returns one entry per block that carries text, empty entries included.
  */
-function joinReasoning(blocks: readonly BlockLike[]): string {
+function streams(blocks: readonly BlockLike[]): string[] {
   return blocks
-    .filter((block) => block.type === 'reasoning' && block.text !== undefined)
+    .filter((block) => isTextBearing(block) && block.text !== undefined)
     .map((block) => block.text ?? '')
-    .join('\n')
 }
 
 /**
  * Decide whether one finished turn is a leaking stall.
  * @param observation - the turn's end reason and its closing message blocks.
- * @returns true only when the turn completed, produced nothing actionable, and
- *   its reasoning ends in protocol markup.
+ * @returns true only when the turn completed, produced no non-text block, and
+ *   its content ends in protocol markup.
  */
 export function isRescueCandidate(observation: TurnObservation): boolean {
   if (!observation.completed) return false
-  if (observation.blocks.some(isActionable)) return false
-  return hasLeakedProtocolTail(joinReasoning(observation.blocks))
+  if (observation.blocks.some((block) => !isTextBearing(block))) return false
+  return hasLeakedProtocolTail(streams(observation.blocks))
 }
