@@ -279,9 +279,14 @@ if (existsSync('.github/workflows/release.yml')) {
 
 // --- Declaration self-consistency --------------------------------------------------------
 
-// Compare **floors**, not shapes: the shape of a range is the maintainer's choice and may change,
-// but "the lowest version anyone can install by our declaration is not below the floor of
-// engines.dsh" is exactly what a user runs into.
+// Compare **floors**, not shapes: the shape of a range is the maintainer's choice and may change.
+// What these two assertions hold is declaration **self-consistency** — one fact is not written
+// down as two different values. Compatibility itself is decided by `engines.dsh` alone: since
+// 0.2.1-alpha.4 an own `engines.dsh` is read on its own and the `@deepseek-ai/dsh*` peer ranges are
+// ignored (`packages/boot/app-boot/src/plugin-compatibility.ts`). Before that release the peer
+// edges were the gate and a peer floor really could leave a host uninstallable — that is the rule
+// this comparison was written for, and why the two are still held to agree; it survives as a
+// consistency check, not as a compatibility claim.
 const floor = typeof pkg.engines?.dsh === 'string' ? pkg.engines.dsh.trim() : ''
 const floorVersion = lowerBoundOf(floor)
 require_(
@@ -302,7 +307,7 @@ if (floorVersion !== undefined) {
     require_(
       `peer ${name} floor is not below engines.dsh`,
       version !== undefined && compareFloor(version, floorVersion) >= 0,
-      `the peer range is ${text} (floor ${version ?? '?'}) and engines.dsh is ${floor} — a host installed by the peer range may not satisfy engines.`,
+      `the peer range is ${text} (floor ${version ?? '?'}) and engines.dsh is ${floor} — the same declaration written two ways; engines.dsh is the one that decides.`,
     )
   }
 }
