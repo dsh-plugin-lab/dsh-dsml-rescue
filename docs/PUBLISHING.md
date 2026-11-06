@@ -117,12 +117,13 @@ let the draft wait.
 
 ## After a release
 
-- The version on npm matches the merged commit, and the market listing shows the new version with
-  its title and icon. A missing title or icon means the package dropped a file the market reads,
+- The version on npm matches the merged commit, and the index listing shows the new version with
+  its title and icon. A missing title or icon means the package dropped a file the index reads,
   which `pnpm run check:release` would have caught.
 - The draft release for the tag is deleted by the flow; a leftover draft is a defect.
-- A merged version that is not on npm is invisible from inside this repository — the market's drift
-  report is what surfaces it.
+- A merged version that is not on npm is invisible from inside this repository — the
+  [index's drift report](https://github.com/dsh-plugin-lab/market/blob/main/scripts/check-org-drift.mjs)
+  is what surfaces it.
 
 ## Not this repository's business
 

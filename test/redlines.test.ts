@@ -350,7 +350,7 @@ describe('红线：续跑文案中性且固定', () => {
 /**
  * The facade images, and where they live.
  *
- * The market and every installer fetch this package to read `locale/` and the icon. Facade images
+ * The index build and every installer fetch this package to read `locale/` and the icon. Facade images
  * belong in the repository and the README references them relatively — both surfaces that render a
  * README resolve that path. `assets/` holds those images (the stall screenshot), and the first
  * assertion is the shape that keeps the directory from ever being added to `files`.
@@ -374,7 +374,7 @@ describe('红线：门面图不进包，README 用相对路径', () => {
     }
   })
 
-  it('icon.svg 被 files 覆盖 —— 市场要从包里读它', () => {
+  it('icon.svg 被 files 覆盖 —— 索引要从包里读它', () => {
     const icon = (pkg.icon ?? '').replace(/^\.\//, '')
     expect(icon).not.toBe('')
     expect(pkg.files ?? []).toContain(icon)
