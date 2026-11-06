@@ -33,9 +33,15 @@ satisfy that.
 
 ## Does the declaration still cover the line users install?
 
-`engines.dsh` and every `@deepseek-ai/dsh-*` edge name the host the plugin runs on. That range is not
-a fact about this repository — it is a claim about npm, and npm moves. `pnpm run check:declaration`
-asks npm itself whether the claim still holds:
+`engines.dsh` alone decides whether the host is compatible: since 0.2.1-alpha.4 an own `engines.dsh`
+is read on its own and the `@deepseek-ai/dsh-*` edges are ignored for that judgement (see
+`packages/boot/app-boot/src/plugin-compatibility.ts` in the host checkout). Every `dsh-*` edge is
+still declared and must be byte-identical to `engines.dsh`, because one range written two ways is a
+range nobody can audit — but it is a mirror, not a second opinion. Before 0.2.1-alpha.4 those edges
+were the gate, which is why they are kept in step rather than dropped.
+
+`engines.dsh` is not a fact about this repository — it is a claim about npm, and npm moves.
+`pnpm run check:declaration` asks npm itself whether the claim still holds:
 
 ```shell
 pnpm run check:declaration              # every declared line
