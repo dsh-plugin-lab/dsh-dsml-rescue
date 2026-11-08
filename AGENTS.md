@@ -77,3 +77,8 @@ One line each, plus where the rule itself lives — the reasoning is not repeate
   `pnpm run doctor`. → [the install check](docs/VERIFICATION.md#the-install-check)
 - **`lib/` is the code a `link:` install runs.** Editing `src/` without `pnpm run build` changes
   nothing at runtime, with no error — `pnpm run doctor` compares the two.
+- **`engines.dsh` alone decides host compatibility.** Since DSH 0.2.1-alpha.4 a package that declares
+  it has its `@deepseek-ai/dsh*` peer ranges ignored; only an absent declaration falls back to the
+  peers. Moving the floor means changing `engines.dsh` and the peers together, and silence has two
+  shapes: a `workspace:` range counts as incompatible, and a non-object `engines` or a non-string
+  `engines.dsh` makes the manifest unreadable, which refuses the install.
