@@ -394,6 +394,54 @@ describe('红线：门面图不进包，README 用相对路径', () => {
  * The records under `.agents/notes/` are excluded — they describe a moment, and the file they name
  * may legitimately have moved since.
  */
+/**
+ * `pnpm run check` covers every step CI runs.
+ *
+ * The organization's criteria ask for it, and the reason is plain: both commands answer "is this safe
+ * to push?". `check` is the local answer and CI is the authority, so `check` cannot be the narrower of
+ * the two — whatever it skips is found minutes later, on a runner, after the push already left. This
+ * repository was one of the ones that skipped `lint` and `format:check`.
+ *
+ * The reverse direction is deliberately **not** asserted: `check` also runs `check:release`, and that
+ * guard belongs to a push rather than to a verification job. Equality would drag it into CI.
+ */
+describe('check 覆盖 CI 的每一步', () => {
+  /**
+   * The `pnpm …` steps `verify` actually runs, with the `run` keyword normalised away.
+   *
+   * A step is written either inline (`- run: pnpm run lint`) or as a mapping with a `name:` above it
+   * (`run: pnpm run format:check`), so the leading dash is optional. Anchoring on `$` is what keeps
+   * `pnpm install --frozen-lockfile …` and `pnpm exec …` out of the list: they carry arguments, and
+   * neither of them is a gate.
+   */
+  function ciSteps(): string[] {
+    const found = [
+      ...read('.github/workflows/ci.yml').matchAll(/^\s*(?:-\s+)?run: pnpm (?:run )?([\w:-]+)$/gmu),
+    ].map((match) => match[1] ?? '')
+    return [...new Set(found)].filter((step) => step !== '')
+  }
+
+  it('the reader really saw CI steps — an empty list would make this vacuous', () => {
+    expect(ciSteps().length).toBeGreaterThan(0)
+  })
+
+  it('no step CI runs is missing from `check`', () => {
+    const manifest = readJson('package.json') as { scripts?: Record<string, string> }
+    const check = manifest.scripts?.check ?? ''
+    const missing = ciSteps().filter((step) => !check.includes(`pnpm run ${step}`))
+    expect(
+      missing,
+      `CI runs a step that \`pnpm run check\` does not: ${missing.join(', ')}`,
+    ).toEqual([])
+  })
+
+  it('this assertion has teeth (negative control)', () => {
+    const detector = (check: string) =>
+      ciSteps().filter((step) => !check.includes(`pnpm run ${step}`))
+    expect(detector('pnpm run typecheck')).toContain('lint')
+  })
+})
+
 describe('文档', () => {
   /** Every markdown file a reader may land on, excluding records and dependency trees. */
   function documents(dir = '.'): string[] {
