@@ -73,17 +73,25 @@ different reasons: recognition follows new evidence, limits follow the operator'
 
 | Situation | Decision | Effect on the streak |
 |---|---|---|
-| candidate, rescue budget left, nobody waiting | continue the turn | +1 |
+| candidate, no failed rescue yet counted for the last one, nobody waiting | continue the turn | unchanged (the attempt is in flight, not a failure) |
+| candidate, and the previous rescue's turn stalled again | continue the turn, having charged that one failure | +1, then the attempt is in flight |
 | candidate, a human prompt already queued | stay out of the way | unchanged |
-| candidate, rescue budget spent | stop | cleared |
+| candidate, failed rescues reached the cap | stop | cleared |
 | a human prompt arrives | nothing | cleared |
 | the closing step spent its whole output ceiling | nothing | cleared |
 | not a candidate | nothing | cleared |
 | turn ended aborted or errored | nothing | cleared |
 
-The streak clears on two facts only: human input, because the human now owns the conversation, and
-a turn that ended abnormally, because a different failure is a different failure. The plugin's own
-notices never clear it.
+**What the streak counts is failed rescues, not stalls and not attempts.** A rescue is charged only
+once the turn it opened is judged a stall again; issuing one costs nothing by itself. The difference
+is observable: an attempt whose turn never runs — the agent is disposed, a human cancels, the session
+ends — leaves the streak where it was, so a spent budget always means "this has failed this many
+times", never "we tried this many times". It also makes the count unbounded within a run: as long as
+a rescue lands, the next stall starts from zero, so one user request may absorb any number of them.
+
+The streak clears on four facts: a turn that produced output (the rescue worked), human input
+(the human now owns the conversation), a turn that ended abnormally (a different failure is a
+different failure), and a step cut off at its output ceiling. The plugin's own notices never clear it.
 
 Three orderings are load-bearing. The rescue cap outranks a waiting human, so a spent cap is always
 recorded rather than deferred forever. An abnormal turn clears the streak: continuing a turn that
@@ -157,7 +165,7 @@ are written down; the README links here instead of copying it.
 | Key | Default | Effect |
 |---|---|---|
 | `enabled` | `true` | Turn the plugin off without uninstalling it. |
-| `maxConsecutive` | `3` | Continuations allowed in a row for one agent. Each costs one model request, so this is the only spend control. Must be at least 1. |
+| `maxConsecutive` | `3` | **Failed** rescues allowed in a row for one agent. A rescue is charged only when the turn it opened stalls again, so an attempt that never runs costs nothing and a run of rescues that keep landing is unbounded. Each attempt costs one model request, so this is the only spend control. Must be at least 1. |
 | `applyToSubagents` | `true` | Whether child agents continue too. Turning it off means a stuck child settles immediately and its parent is told the run ended. |
 
 Values are validated by the schema in [src/index.ts](../src/index.ts); a cap below one is rejected

@@ -34,7 +34,7 @@ import { createRescueMessage } from './messages.ts'
 
 /** Deployment-varying limits, already validated by the plugin entry. */
 export interface RuntimeConfig {
-  /** Cap on consecutive rescues for one agent. */
+  /** Cap on consecutive *failed* rescues for one agent. */
   readonly maxConsecutive: number
   /** Whether child agents are rescued too. */
   readonly applyToSubagents: boolean
@@ -110,7 +110,7 @@ export function install(ctx: Context, config: RuntimeConfig): void {
 
     if (step.decision === 'give-up') {
       ctx.logger.warn(
-        `dsml-rescue: agent "${agent.id}" stalled ${config.maxConsecutive} times in a row; stopped continuing it`,
+        `dsml-rescue: agent "${agent.id}" had ${config.maxConsecutive} rescues fail in a row; stopped continuing it`,
       )
       return
     }
@@ -119,7 +119,7 @@ export function install(ctx: Context, config: RuntimeConfig): void {
       agent.followup(createRescueMessage(step.round, config.maxConsecutive))
     } catch (error: unknown) {
       // A queue failure must never fail the turn that just finished.
-      states.set(agent, { ...(states.get(agent) ?? INITIAL_STATE), consecutive: 0 })
+      states.set(agent, { ...(states.get(agent) ?? INITIAL_STATE), rescuePending: false })
       ctx.logger.warn(
         `dsml-rescue: could not queue a continuation for agent "${agent.id}": ${String(error)}`,
       )
