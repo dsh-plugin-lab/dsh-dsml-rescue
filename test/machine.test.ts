@@ -104,6 +104,64 @@ describe('consecutive stalls with nobody interrupting', () => {
     // improve by asking again.
     expect(runTurns([stall, stall], 1).decisions).toEqual(['rescue', 'give-up'])
   })
+
+  it('charges a rescue only once its successor turn stalls', () => {
+    // Issuing an attempt is not evidence that it failed: the budget is spent by
+    // the verdict on the turn it opened, which arrives one turn later.
+    const first = reduce(
+      { ...INITIAL_STATE, turn: 1, blocks: stallBlocks, outputTokens: undefined },
+      { kind: 'turn-stopping', turn: 1, humanPending: false, outputCeiling: undefined },
+      { maxConsecutive: 3 },
+    )
+    expect(first.decision).toBe('rescue')
+    expect(first.state.failedRescues).toBe(0)
+    expect(first.state.rescuePending).toBe(true)
+
+    const second = reduce(
+      { ...first.state, turn: 2, blocks: stallBlocks },
+      { kind: 'turn-stopping', turn: 2, humanPending: false, outputCeiling: undefined },
+      { maxConsecutive: 3 },
+    )
+    expect(second.decision).toBe('rescue')
+    expect(second.state.failedRescues).toBe(1)
+  })
+
+  it('never counts a pending attempt whose turn never ran as a failure', () => {
+    // A rescue whose turn never opens — the agent is disposed, a human cancels —
+    // must not spend budget, or the cap would mean "we tried this many times"
+    // instead of "this has failed this many times".
+    let state = reduce(
+      { ...INITIAL_STATE, turn: 1, blocks: stallBlocks, outputTokens: undefined },
+      { kind: 'turn-stopping', turn: 1, humanPending: false, outputCeiling: undefined },
+      { maxConsecutive: 3 },
+    ).state
+    // The human takes over before the queued turn runs.
+    state = reduce(state, { kind: 'human-message' }, { maxConsecutive: 3 }).state
+    expect(state.failedRescues).toBe(0)
+    expect(state.rescuePending).toBe(false)
+  })
+
+  it('keeps rescuing a run that keeps landing, past the cap in total', () => {
+    // The cap bounds consecutive failures, not rescues: one user request may be
+    // rescued as many times as the model needs, as long as each one lands.
+    const plan = [stall, stall, answer, stall, stall, answer, stall, stall, stall]
+    const { decisions, rounds } = runTurns(plan, 3, [3, 6])
+    expect(decisions).toEqual([
+      'rescue',
+      'rescue',
+      'ignore',
+      'rescue',
+      'rescue',
+      'ignore',
+      'rescue',
+      'rescue',
+      'rescue',
+    ])
+    // Seven rescues and not one give-up: each landing resets the streak, so the
+    // cap of three is only ever measured against the failures between two of them.
+    expect(decisions.filter((decision) => decision === 'rescue')).toHaveLength(7)
+    expect(rounds.slice(6)).toEqual([1, 2, 3])
+  })
 })
 
 describe('what restores the budget', () => {
@@ -148,7 +206,7 @@ describe('what does not count as a stall', () => {
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('ignore')
-    expect(step.state.consecutive).toBe(0)
+    expect(step.state.failedRescues).toBe(0)
   })
 
   it('still rescues when the closing step stayed under its ceiling', () => {
@@ -195,13 +253,13 @@ describe('what does not count as a stall', () => {
       { kind: 'assistant-message', turn: 1, blocks: stallBlocks, outputTokens: undefined },
       { maxConsecutive: 3 },
     ).state
-    state = { ...state, consecutive: 2 }
+    state = { ...state, failedRescues: 2, rescuePending: false }
     const step = reduce(
       state,
       { kind: 'turn-stopping', turn: 1, humanPending: true, outputCeiling: undefined },
       { maxConsecutive: 3 },
     )
     expect(step.decision).toBe('yield')
-    expect(step.state.consecutive).toBe(2)
+    expect(step.state.failedRescues).toBe(2)
   })
 })

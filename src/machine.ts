@@ -16,8 +16,20 @@ import type { Decision } from './policy.ts'
 
 /** What the reducer remembers between events for one agent. */
 export interface MachineState {
-  /** Rescues queued since the last turn that produced output or human input. */
-  readonly consecutive: number
+  /**
+   * Rescues that were issued and then **failed** — the turn each one opened
+   * stalled again. A rescue still in flight is not counted: only an observed
+   * failure spends the budget, and a productive turn clears the streak, so a
+   * long run may absorb any number of rescues as long as they keep landing.
+   */
+  readonly failedRescues: number
+  /**
+   * Whether a rescue was queued for the last stall and its successor turn has
+   * not been judged yet. This is what distinguishes "we issued a rescue" from
+   * "that rescue failed"; a rescue whose turn never runs (the agent is disposed,
+   * a human cancels) leaves this set and spends nothing.
+   */
+  readonly rescuePending: boolean
   /** Turn that owns {@link MachineState.blocks}, or undefined before the first step. */
   readonly turn: number | undefined
   /** Content blocks of the last assistant message seen. */
@@ -58,7 +70,7 @@ export type MachineEvent =
 
 /** Limits the reducer reads from configuration. */
 export interface MachineLimits {
-  /** Cap on consecutive rescues. */
+  /** Cap on consecutive *failed* rescues. */
   readonly maxConsecutive: number
 }
 
@@ -74,7 +86,8 @@ export interface MachineStep {
 
 /** The state a machine starts in. */
 export const INITIAL_STATE: MachineState = {
-  consecutive: 0,
+  failedRescues: 0,
+  rescuePending: false,
   turn: undefined,
   blocks: [],
   outputTokens: undefined,
@@ -105,9 +118,10 @@ function spentBudget(state: MachineState, ceiling: number | undefined): boolean 
 /**
  * Advance one agent's machine by one event.
  *
- * The streak clears on two facts only: a turn that ended abnormally (a
- * different failure, which a rescue would hide) and human input (the human now
- * owns the conversation). It is *not* cleared by the plugin's own notices.
+ * The streak of failed rescues clears on three facts: a turn that produced
+ * output (the rescue worked), an abnormal close (a different failure, which a
+ * rescue would hide), and human input (the human now owns the conversation). It
+ * is *not* cleared by the plugin's own notices.
  * @param state - state after the previous event.
  * @param event - the fact to apply.
  * @param limits - configured cap.
@@ -128,27 +142,38 @@ export function reduce(
       })
 
     case 'human-message':
-      return nothing({ ...state, consecutive: 0 })
+      return nothing({ ...state, failedRescues: 0, rescuePending: false })
 
     case 'turn-end':
       // An abnormal close is a different failure; continuing it would hide the cause.
-      return event.completed ? nothing(state) : nothing({ ...state, consecutive: 0 })
+      return event.completed
+        ? nothing(state)
+        : nothing({ ...state, failedRescues: 0, rescuePending: false })
 
     case 'turn-stopping': {
       // A truncated step owes an answer it never wrote: continuing it would treat
       // truncation as a stall and buy another budget to be cut off from.
       const blocks =
         state.turn === event.turn && !spentBudget(state, event.outputCeiling) ? state.blocks : []
+      const candidate = isRescueCandidate({ completed: true, blocks })
+      // A stall observed here is the verdict on the *previous* rescue, not on a new
+      // one: a rescue is only marked failed once its successor turn is judged.
+      const failedRescues =
+        state.rescuePending && candidate ? state.failedRescues + 1 : state.failedRescues
       const outcome = evaluate({
-        candidate: isRescueCandidate({ completed: true, blocks }),
-        consecutive: state.consecutive,
+        candidate,
+        failedRescues,
         maxConsecutive: limits.maxConsecutive,
         humanPending: event.humanPending,
       })
       return {
-        state: { ...state, consecutive: outcome.consecutive },
+        state: {
+          ...state,
+          failedRescues: outcome.failedRescues,
+          rescuePending: outcome.decision === 'rescue',
+        },
         decision: outcome.decision,
-        round: outcome.decision === 'rescue' ? outcome.consecutive : 0,
+        round: outcome.decision === 'rescue' ? outcome.failedRescues + 1 : 0,
       }
     }
   }

@@ -19,7 +19,7 @@ export const name = 'dsh-dsml-rescue'
 /** The agent registry, needed to map a session back to its live agent. */
 export const inject = ['agents']
 
-/** Rescues allowed in a row before an agent is left alone. */
+/** Failed rescues allowed in a row before an agent is left alone. */
 export const DEFAULT_MAX_CONSECUTIVE = 3
 
 /** Whether child agents are rescued by default. */
@@ -30,8 +30,10 @@ export interface Config {
   /** Whether the plugin acts at all. Turn it off without uninstalling. */
   enabled?: boolean
   /**
-   * Consecutive rescues allowed for one agent before it is left alone. Each
-   * rescue costs one model request, so this is the only spend control here.
+   * **Failed** rescues allowed in a row for one agent before it is left alone.
+   * A rescue counts as failed only once the turn it opened is judged a stall
+   * again; issuing one costs nothing by itself. Each attempt costs one model
+   * request, so this is the only spend control here.
    */
   maxConsecutive?: number
   /**

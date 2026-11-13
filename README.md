@@ -57,7 +57,7 @@ This plugin types it.
   needed — an empty turn without the markup is a different failure.
 - Sends one short, neutral line: take the next step — never an offer to declare the work finished.
 - Backs off while you are typing.
-- Gives up after a few attempts instead of burning requests.
+- Gives up after a few failed attempts instead of burning requests.
 - Covers subagents too, so a delegated task is not falsely reported as completed while it is stuck.
 
 ## Install
