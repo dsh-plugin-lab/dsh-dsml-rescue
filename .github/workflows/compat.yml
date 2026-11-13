@@ -73,18 +73,12 @@ jobs:
           # This leg has to be narrowed too: under a union range the installer prefers whatever
           # `latest` points at when that satisfies the range, so a mixed tree gets installed and
           # `verify` reports a false green that comes from the narrowing, not from the host.
+          #
+          # 2026-11-13: the declaration narrows to this family alone, so the two prefix legs below
+          # are gone with it. Adding a family back means adding a leg here in the same change.
           - line: next
-            only: '--only 0.2.1'
+            only: '--only 0.2.2'
             blocking: true
-          # The middle family the declaration promises: located by version prefix, because no
-          # dist-tag points at it. Recorded, not blocking.
-          - line: 0.2.0-rc
-            only: '--only 0.2.0-rc'
-            blocking: false
-          # The lowest promised family: same treatment.
-          - line: 0.1.7-rc
-            only: '--only 0.1.7-rc'
-            blocking: false
     name: swap (${{ matrix.line }})
     steps:
       - uses: actions/checkout@v7

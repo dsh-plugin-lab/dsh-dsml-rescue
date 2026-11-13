@@ -38,17 +38,15 @@ class FakeAgents extends Service {
   get(id: string): FakeAgent | undefined {
     return this.live.find((agent) => agent.id === id)
   }
-
-  /** Top-level agents; anything absent here is a child. */
-  roots(): FakeAgent[] {
-    return this.live.filter((agent) => !agent.id.startsWith('child'))
-  }
 }
 
 /** Build a fake agent that records what it was asked to queue. */
 function makeAgent(id: string, maxTokens?: number): FakeAgent {
   const session = {
     id,
+    // The plugin reads lineage off the header, not the registry: `roots()` is gone
+    // from `AgentRegistry` on the 0.2.2 rc line. A child is one a parent created.
+    header: { origin: id.startsWith('child') ? 'subagent' : undefined },
     requestHeader: () => (maxTokens === undefined ? undefined : { config: { maxTokens } }),
   }
   const agent: FakeAgent = {
