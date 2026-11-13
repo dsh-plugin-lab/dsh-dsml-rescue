@@ -65,9 +65,15 @@ export function install(ctx: Context, config: RuntimeConfig): void {
     return step
   }
 
-  /** Whether this agent was created by another agent instead of at the root. */
+  /**
+   * Whether this agent was created by another agent instead of at the root.
+   *
+   * Read off the session header rather than the registry: `AgentRegistry.roots()`
+   * is gone in the 0.2.2 rc line (the registry now exposes `list()`/`get()`), and
+   * a per-session fact belongs to the session anyway.
+   */
   function isSubagent(agent: Agent): boolean {
-    return !ctx.agents.roots().includes(agent)
+    return agent.session.header.origin === 'subagent'
   }
 
   ctx.on('session/event', (session, event) => {

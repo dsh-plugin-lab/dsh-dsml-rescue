@@ -133,9 +133,16 @@ describe('依赖分层', () => {
  * line and a host patch release does not by itself force the declaration to move.
  *
  * npm resolves differently: it matches a prerelease candidate only against a comparand naming the
- * same `major.minor.patch`. That is the rule the compatibility patrol judges by, and it is why one
- * family cannot cover the lines this plugin runs on — a range that loses a family drops those users.
+ * same `major.minor.patch`. That is the rule the compatibility patrol judges by, which is why a
+ * family list is written down once, here, and every other place links back to it.
+ *
+ * **2026-11-13 收成单族**：宿主的 0.2.2 rc 线删了本插件依赖的符号
+ * （`AgentRegistry.roots()`），而声明面仍承诺三条更早的族 —— 那是「承诺了却跑不了」，
+ * 比缩窄更诚实的是缩窄。同一批把 `engines.dsh`、`compat.yml` 矩阵与
+ * `TRACKED_LINES` 一起改；增删一族要同批改这三处。
  */
+const PROMISED_FAMILIES = ['0.2.2'] as const
+
 describe('声明面自洽', () => {
   const engine = pkg.engines?.['dsh'] ?? ''
 
@@ -153,7 +160,7 @@ describe('声明面自洽', () => {
     }
   })
 
-  it('已提交的 engines.dsh 承诺四族 —— 删掉一族等于缩窄对外承诺', () => {
+  it('已提交的 engines.dsh 只承诺 PROMISED_FAMILIES 里那几族 —— 增删一族都是对外承诺的变更', () => {
     // Read the **committed** manifest, not the working tree: the compatibility patrol narrows the
     // working copy to a single family with `swap --only` to measure one family, and that measurement
     // is never committed. Judging the working tree would report the measurement as a defect.
@@ -164,16 +171,9 @@ describe('声明面自洽', () => {
       .split('||')
       .map((branch) => /(\d+\.\d+\.\d+)/.exec(branch)?.[0])
       .filter((tuple): tuple is string => tuple !== undefined)
-    expect(families, `已提交的 engines.dsh 读不出四族：${declared}`).toHaveLength(4)
-    // 0.1.7 is a real compatibility fix, not a precaution: a release once raised the floor past it
-    // and declared those users incompatible.
-    expect(families).toContain('0.1.7')
-    // The two RC tuples are deliberately not written down. What this holds is "do not lose a
-    // promised family", not a pinned version: the gate matches with `includePrerelease: true`, so a
-    // family already covers the later patch levels on its own line. npm's default matching is the
-    // stricter reader — a prerelease candidate only matches a comparand naming the same
-    // major.minor.patch — which is why the patrol and the gate can disagree about one range.
-    expect(families.filter((tuple) => tuple !== '0.1.7')).toHaveLength(3)
+    expect(families, `已提交的 engines.dsh 与 PROMISED_FAMILIES 不一致：${declared}`).toEqual([
+      ...PROMISED_FAMILIES,
+    ])
   })
 
   it('每个 @deepseek-ai/dsh-* 声明与 engines.dsh 逐字相同', () => {
