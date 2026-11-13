@@ -8,7 +8,7 @@
 ## Commands
 
 ```shell
-pnpm run check          # typecheck + build + test + the release-state checks
+pnpm run check          # everything CI runs, plus the release-state checks
 pnpm run lint           # ESLint
 pnpm run format:check   # formatting
 pnpm run check:release  # the release-state invariants on their own
