@@ -1,6 +1,6 @@
 {
   "name": "dsh-dsml-rescue",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Auto-continues turns stalled by DSML tool-call markup, wherever the route leaks it.",
   "keywords": [
     "dsh",
