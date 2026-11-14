@@ -7,7 +7,11 @@
     "deepseek-harness",
     "dsh-plugin",
     "reasoning",
-    "auto-continue"
+    "auto-continue",
+    "dsml",
+    "tool-call",
+    "reasoning-leak",
+    "retry"
   ],
   "license": "MIT",
   "author": "zlZayn",
