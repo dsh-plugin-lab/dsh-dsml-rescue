@@ -56,6 +56,13 @@ describe('hasLeakedProtocolTail', () => {
     expect(tail('<||DSML|| calls>```json\n{"a":1}\n```')).toBe(true)
   })
 
+  it('does not let a fence that never closes blank the tail it swallowed', () => {
+    // Recorded: one fence delimiter mentioned inline in prose, in a reasoning
+    // block whose last line is the marker.
+    const message = 'Convert the line before a ``` fence into a label?\n</｜｜DSML｜｜ parameter>'
+    expect(tail(message)).toBe(true)
+  })
+
   it('reads a fence per stream, so one block cannot blank the next', () => {
     // Recorded: a trimmed reasoning tail can carry an unpaired fence of its own.
     // Carrying that state into the visible text would hide the leak in it.
