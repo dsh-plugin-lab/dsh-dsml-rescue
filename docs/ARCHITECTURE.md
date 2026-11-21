@@ -49,8 +49,9 @@ output.
 **A fenced code block is a quotation, not output.** When a model transcribes the call it meant to
 make, the transcription goes inside a fence; removing those spans before reading the tail is what
 lets a leaked dump followed by a JSON transcription still count, and what keeps a model documenting
-the dialect from counting. Fences are removed **per stream**: a fence cannot span two content
-blocks, so one block's unclosed fence must not blank the next block's reading.
+the dialect from counting. Fences are removed **per stream** — a fence cannot span two content
+blocks — and a fence the stream never closes is not a quotation at all: it is read as it stands,
+because blanking it would silence the tail this plugin exists to read.
 
 The marker is read from [a normalization pass](../src/protocol.ts) rather than a list of spellings,
 so full-width bars, ASCII bars and mixed case all arrive as one form — that is a property of the

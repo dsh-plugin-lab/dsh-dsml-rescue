@@ -24,9 +24,11 @@ const MARKER = /\|\|\s*dsml\s*\|\|/i
  * A fence is quotation: a model that transcribes the call it meant to make puts
  * the transcription inside one, and that transcription is not what the message
  * says. Fences can open mid-line, so this cuts at the delimiter rather than at
- * the start of the line.
+ * the start of the line — but only a fence that closes: one the stream leaves
+ * open is read as it stands, because blanking it would silence the tail.
  * @param text - one message's content.
- * @returns the same text with fenced spans blanked out.
+ * @returns the same text with fenced spans blanked out, or unchanged when a
+ *   fence never closes.
  */
 function withoutFences(text: string): string {
   const kept: string[] = []
@@ -43,7 +45,7 @@ function withoutFences(text: string): string {
     }
     kept.push(fenced ? visible : visible + rest)
   }
-  return kept.join('\n')
+  return fenced ? text : kept.join('\n')
 }
 
 /**
