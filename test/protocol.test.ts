@@ -28,6 +28,12 @@ describe('hasLeakedProtocolTail', () => {
     expect(tail('ok\n<||dsml|| invoke>')).toBe(true)
   })
 
+  it('detects the single-bar spelling of the same dialect', () => {
+    // Recorded: one session wrote every token with one bar while others in the
+    // same log used two, and this spelling leaked while the plugin was live.
+    expect(tail('Let me run it.\n</｜DSML｜ calls>')).toBe(true)
+  })
+
   it('detects markup a few blank lines above the end', () => {
     expect(tail(`done\n<||DSML|| calls>\n\n\n`)).toBe(true)
   })
@@ -38,6 +44,11 @@ describe('hasLeakedProtocolTail', () => {
     const explaining =
       'The turn ended without output because it wrote </｜｜DSML｜｜ parameter> into reasoning.'
     expect(tail(explaining)).toBe(false)
+  })
+
+  it('does not treat a single-bar mention inside a sentence as a leak', () => {
+    // The same mistake as above, on the spelling the wider matcher now accepts.
+    expect(tail('The format is </｜DSML｜ calls>, which never lands.')).toBe(false)
   })
 
   it('does not look past the last line', () => {
