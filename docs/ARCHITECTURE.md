@@ -17,7 +17,7 @@ Three facts from the recordings this plugin was built against
 ([evidence](../.agents/notes/the-stall-evidence.md)) shape every rule below:
 
 - the leaked DSML markup is the **last** thing the closing message says, and carries the token
-  `｜｜DSML｜｜`, whose bars every sample we hold writes full-width,
+  `｜｜DSML｜｜`, whose bars are written full-width and sometimes singly (`｜DSML｜`),
 - the closing message carries **no tool call**,
 - the turn is recorded `completed`, so nothing downstream treats it as a failure.
 
@@ -54,9 +54,9 @@ blocks — and a fence the stream never closes is not a quotation at all: it is 
 because blanking it would silence the tail this plugin exists to read.
 
 The marker is read from [a normalization pass](../src/protocol.ts) rather than a list of spellings,
-so full-width bars, ASCII bars and mixed case all arrive as one form — that is a property of the
-matcher, not something every sample shows: every marker we have on record writes the bars
-full-width.
+so full-width bars, ASCII bars, mixed case and one-or-two bars all arrive as one form. The doubling
+is **optional** because the same model writes both: one recorded session leaked with a single bar
+while the plugin was already rescuing others in that log.
 
 For the same reason the matcher anchors on the **marker**, never on the token name after it. This is
 a robustness argument rather than an observation: a byte-level tokenizer writes a space or

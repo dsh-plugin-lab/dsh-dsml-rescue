@@ -14,9 +14,11 @@
 /**
  * The marker that opens and closes every token of the dialect. Matched on
  * NFKC-normalized text, so the full-width vertical bar the dialect actually
- * uses arrives here as an ASCII pipe and needs no separate alternative.
+ * uses arrives here as an ASCII pipe and needs no separate alternative. The bar
+ * is optional twice because one recorded session writes it once, next to
+ * double-bar tokens in the same log.
  */
-const MARKER = /\|\|\s*dsml\s*\|\|/i
+const MARKER = /\|{1,2}\s*dsml\s*\|{1,2}/i
 
 /**
  * Remove fenced code blocks, keeping a fence opener's line prefix.
